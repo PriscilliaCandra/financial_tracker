@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ledger — Create Account</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="auth.css" />
+</head>
+
+<body>
+  <div class="grain"></div>
+  <div class="auth-bg">
+    <div class="auth-bg-line"></div>
+    <div class="auth-bg-line"></div>
+    <div class="auth-bg-line"></div>
+  </div>
+
+  <main class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <span class="auth-logo-icon">◈</span>
+        <span class="auth-logo-text">Ledger</span>
+      </div>
+      <h1 class="auth-title">Create account</h1>
+      <p class="auth-sub">Start tracking your finances in seconds.</p>
+
+      <form id="registerForm" novalidate>
+        <div class="field">
+          <label for="username">Username</label>
+          <input type="text" id="username" placeholder="choose a username" autocomplete="username" />
+          <span class="field-hint">Min. 3 characters</span>
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="input-eye">
+            <input type="password" id="password" placeholder="••••••••" autocomplete="new-password" />
+            <button type="button" class="eye-btn" id="eyeBtn"><span id="eyeIcon">👁</span></button>
+          </div>
+          <span class="field-hint">Min. 6 characters</span>
+        </div>
+        <div class="field">
+          <label for="confirm">Confirm password</label>
+          <input type="password" id="confirm" placeholder="••••••••" autocomplete="new-password" />
+        </div>
+
+        <div class="strength-wrap" id="strengthWrap" style="display:none">
+          <div class="strength-track">
+            <div class="strength-fill" id="strengthFill"></div>
+          </div>
+          <span class="strength-label" id="strengthLabel"></span>
+        </div>
+
+        <div class="auth-message" id="authMessage"></div>
+
+        <button type="submit" class="auth-btn" id="registerBtn">
+          <span class="auth-btn-text">Create Account</span>
+        </button>
+      </form>
+
+      <p class="auth-switch">Already have an account? <a href="http://127.0.0.1:5000/login">Sign in</a></p>
+    </div>
+  </main>
+
+  <script>
+    const API = "http://127.0.0.1:5000/api";
+    const APPROOT = "http://127.0.0.1:5000";
+
+    // Already logged in → go to dashboard
+    (function () {
+      var token = localStorage.getItem("token");
+      if (!token) return;
+      try {
+        var p = JSON.parse(atob(token.split(".")[1] + "=="));
+        if (p.exp > Date.now() / 1000) window.location.href = APPROOT + "/";
+      } catch (e) { localStorage.clear(); }
+    })();
+
+    var pwInput = document.getElementById("password");
+    document.getElementById("eyeBtn").addEventListener("click", function () {
+      pwInput.type = pwInput.type === "password" ? "text" : "password";
+      document.getElementById("eyeIcon").textContent = pwInput.type === "password" ? "👁" : "🙈";
+    });
+
+    // Password strength meter
+    pwInput.addEventListener("input", function () {
+      var pw = pwInput.value;
+      var wrap = document.getElementById("strengthWrap");
+      if (!pw) { wrap.style.display = "none"; return; }
+      wrap.style.display = "flex";
+      var score = 0;
+      if (pw.length >= 6) score++;
+      if (pw.length >= 10) score++;
+      if (/[A-Z]/.test(pw)) score++;
+      if (/[0-9]/.test(pw)) score++;
+      if (/[^A-Za-z0-9]/.test(pw)) score++;
+      var labels = ["", "Weak", "Fair", "Good", "Strong", "Very strong"];
+      var colors = ["", "#f87171", "#fbbf24", "#fbbf24", "#4ade80", "#4ade80"];
+      var fill = document.getElementById("strengthFill");
+      var label = document.getElementById("strengthLabel");
+      fill.style.width = (score / 5 * 100) + "%";
+      fill.style.background = colors[score];
+      label.textContent = labels[score];
+      label.style.color = colors[score];
+    });
+
+    // Ganti bagian register form submit menjadi:
+    document.getElementById("registerForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var username = document.getElementById("username").value.trim();
+      var password = pwInput.value;
+      var confirm = document.getElementById("confirm").value;
+      var btn = document.getElementById("registerBtn");
+
+      if (!username || !password || !confirm) { showMsg("Please fill in all fields.", "error"); return; }
+      if (password !== confirm) { showMsg("Passwords do not match.", "error"); return; }
+
+      btn.disabled = true;
+      document.querySelector(".auth-btn-text").textContent = "Creating…";
+      try {
+        var res = await fetch(API + "/auth/register", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: username, password: password })
+        });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Registration failed");
+
+        // Simpan ke localStorage
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("username", data.username);
+
+        // 🔥 SET COOKIE juga (penting untuk backend)
+        document.cookie = "token=" + data.token + "; path=/; max-age=" + (60 * 60 * 24 * 7);
+
+        window.location.href = APPROOT + "/";
+      } catch (err) {
+        showMsg(err.message, "error");
+      } finally {
+        btn.disabled = false;
+        document.querySelector(".auth-btn-text").textContent = "Create Account";
+      }
+    });
+
+    function showMsg(text, type) {
+      var el = document.getElementById("authMessage");
+      el.textContent = text; el.className = "auth-message " + type;
+    }
+  </script>
+</body>
+
+</html>

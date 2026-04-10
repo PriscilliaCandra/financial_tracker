@@ -1,212 +1,213 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Daily Financial Tracker</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link
-        href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap"
-        rel="stylesheet" />
-    <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Financial Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
 
-    <div class="grain"></div>
+  <div class="grain"></div>
 
-    <header>
-        <div class="header-inner">
-            <div class="logo">
-                <span class="logo-icon">◈</span>
-                <span class="logo-text">Ledger</span>
-            </div>
-            <p class="header-date" id="headerDate"></p>
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">◈</span>
+        <span class="logo-text">Ledger</span>
+      </div>
+      <div class="header-right">
+        <p class="header-date" id="headerDate"></p>
+        <div class="header-user">
+          <span class="header-username" id="headerUsername"></span>
+          <button class="btn-logout" id="logoutBtn" title="Sign out">Sign out</button>
         </div>
-    </header>
+      </div>
+    </div>
+  </header>
 
-    <!-- ── Overall Summary Cards ─────────────────────── -->
-    <section class="summary" id="summary">
-        <div class="card card--income">
-            <span class="card-label">Total Income</span>
-            <span class="card-amount" id="totalIncome">—</span>
+  <!-- ── Overall Summary Cards ─────────────────────── -->
+  <section class="summary" id="summary">
+    <div class="card card--income">
+      <span class="card-label">Total Income</span>
+      <span class="card-amount" id="totalIncome">—</span>
+    </div>
+    <div class="card card--balance">
+      <span class="card-label">Net Balance</span>
+      <span class="card-amount" id="balance">—</span>
+    </div>
+    <div class="card card--expense">
+      <span class="card-label">Total Expenses</span>
+      <span class="card-amount" id="totalExpense">—</span>
+    </div>
+  </section>
+
+  <!-- ── Salary Budget Tracker ─────────────────────── -->
+  <section class="budget-section" id="budgetSection">
+    <div class="budget-wrapper" id="budgetWrapper">
+      <!-- Rendered by JS -->
+    </div>
+  </section>
+
+  <main class="layout">
+
+    <!-- ── Add Transaction Form ────────────────────── -->
+    <aside class="panel panel--form">
+      <h2 class="panel-title">New Entry</h2>
+      <form id="txForm" novalidate>
+
+        <div class="field">
+          <label for="date">Date</label>
+          <input type="date" id="date" name="date" required />
         </div>
-        <div class="card card--balance">
-            <span class="card-label">Net Balance</span>
-            <span class="card-amount" id="balance">—</span>
+
+        <div class="field">
+          <label>Type</label>
+          <div class="toggle-group">
+            <button type="button" class="toggle active" data-value="income">Income</button>
+            <button type="button" class="toggle"        data-value="expense">Expense</button>
+          </div>
+          <input type="hidden" id="type" name="type" value="income" />
         </div>
-        <div class="card card--expense">
-            <span class="card-label">Total Expenses</span>
-            <span class="card-amount" id="totalExpense">—</span>
+
+        <div class="field">
+          <label for="category">Category</label>
+          <select id="category" name="category" required>
+            <option value="" disabled selected>Select…</option>
+            <optgroup label="Income">
+              <option value="Salary">Salary</option>
+              <option value="Freelance">Freelance</option>
+              <option value="Investment">Investment</option>
+              <option value="Other Income">Other Income</option>
+            </optgroup>
+            <optgroup label="Expense">
+              <option value="Food">Food</option>
+              <option value="Transport">Transport</option>
+              <option value="Housing">Housing</option>
+              <option value="Health">Health</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Other Expense">Other Expense</option>
+            </optgroup>
+          </select>
         </div>
+
+        <div class="field">
+          <label for="amount">Amount</label>
+          <div class="input-prefix">
+            <span>Rp</span>
+            <input type="number" id="amount" name="amount" min="1" step="any" placeholder="0" required />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="note">Note <span class="optional">(optional)</span></label>
+          <input type="text" id="note" name="note" placeholder="e.g. April salary" maxlength="120" />
+        </div>
+
+        <button type="submit" class="btn-submit" id="submitBtn">
+          <span class="btn-text">Add Transaction</span>
+          <span class="btn-icon">+</span>
+        </button>
+        <div class="form-message" id="formMessage"></div>
+      </form>
+    </aside>
+
+    <!-- ── Transaction List ───────────────────────── -->
+    <section class="panel panel--list">
+      <div class="list-header">
+        <h2 class="panel-title">Transactions</h2>
+        <div class="filter-group">
+          <button class="filter active" data-filter="all">All</button>
+          <button class="filter" data-filter="income">Income</button>
+          <button class="filter" data-filter="expense">Expense</button>
+        </div>
+      </div>
+      <ul class="tx-list" id="txList">
+        <li class="tx-empty">Loading…</li>
+      </ul>
     </section>
 
-    <!-- ── Salary Budget Tracker ─────────────────────── -->
-    <section class="budget-section" id="budgetSection">
-        <div class="budget-wrapper" id="budgetWrapper">
-            <!-- Rendered by JS -->
-        </div>
-    </section>
+  </main>
 
-    <main class="layout">
-
-        <!-- ── Add Transaction Form ────────────────────── -->
-        <aside class="panel panel--form">
-            <h2 class="panel-title">New Entry</h2>
-            <form id="txForm" novalidate>
-
-                <div class="field">
-                    <label for="date">Date</label>
-                    <input type="date" id="date" name="date" required />
-                </div>
-
-                <div class="field">
-                    <label>Type</label>
-                    <div class="toggle-group">
-                        <button type="button" class="toggle active" data-value="income">Income</button>
-                        <button type="button" class="toggle" data-value="expense">Expense</button>
-                    </div>
-                    <input type="hidden" id="type" name="type" value="income" />
-                </div>
-
-                <div class="field">
-                    <label for="category">Category</label>
-                    <select id="category" name="category" required>
-                        <option value="" disabled selected>Select…</option>
-                        <optgroup label="Income">
-                            <option value="Salary">Salary</option>
-                            <option value="Freelance">Freelance</option>
-                            <option value="Investment">Investment</option>
-                            <option value="Other Income">Other Income</option>
-                        </optgroup>
-                        <optgroup label="Expense">
-                            <option value="Food">Food</option>
-                            <option value="Transport">Transport</option>
-                            <option value="Housing">Housing</option>
-                            <option value="Health">Health</option>
-                            <option value="Entertainment">Entertainment</option>
-                            <option value="Shopping">Shopping</option>
-                            <option value="Other Expense">Other Expense</option>
-                        </optgroup>
-                    </select>
-                </div>
-
-                <div class="field">
-                    <label for="amount">Amount</label>
-                    <div class="input-prefix">
-                        <span>Rp</span>
-                        <input type="number" id="amount" name="amount" min="1" step="any" placeholder="0" required />
-                    </div>
-                </div>
-
-                <div class="field">
-                    <label for="note">Note <span class="optional">(optional)</span></label>
-                    <input type="text" id="note" name="note" placeholder="e.g. April salary" maxlength="120" />
-                </div>
-
-                <button type="submit" class="btn-submit" id="submitBtn">
-                    <span class="btn-text">Add Transaction</span>
-                    <span class="btn-icon">+</span>
-                </button>
-                <div class="form-message" id="formMessage"></div>
-            </form>
-        </aside>
-
-        <!-- ── Transaction List ───────────────────────── -->
-        <section class="panel panel--list">
-            <div class="list-header">
-                <h2 class="panel-title">Transactions</h2>
-                <div class="filter-group">
-                    <button class="filter active" data-filter="all">All</button>
-                    <button class="filter" data-filter="income">Income</button>
-                    <button class="filter" data-filter="expense">Expense</button>
-                </div>
-            </div>
-            <ul class="tx-list" id="txList">
-                <li class="tx-empty">Loading…</li>
-            </ul>
-        </section>
-
-    </main>
-
-    <!-- ── Cycle History Drawer ───────────────────────── -->
-    <div class="drawer-overlay" id="drawerOverlay">
-        <div class="drawer" id="drawer">
-            <div class="drawer-header">
-                <h3 class="drawer-title">Salary Cycle History</h3>
-                <button class="modal-close" id="drawerClose">&#x2715;</button>
-            </div>
-            <div class="drawer-body" id="drawerBody">
-                <!-- Rendered by JS -->
-            </div>
-        </div>
+  <!-- ── Cycle History Drawer ───────────────────────── -->
+  <div class="drawer-overlay" id="drawerOverlay">
+    <div class="drawer" id="drawer">
+      <div class="drawer-header">
+        <h3 class="drawer-title">Salary Cycle History</h3>
+        <button class="modal-close" id="drawerClose">&#x2715;</button>
+      </div>
+      <div class="drawer-body" id="drawerBody">
+        <!-- Rendered by JS -->
+      </div>
     </div>
+  </div>
 
-    <!-- ── Edit Modal ──────────────────────────────────── -->
-    <div class="modal-overlay" id="editOverlay">
-        <div class="modal">
-            <div class="modal-header">
-                <h3 class="modal-title">Edit Transaction</h3>
-                <button class="modal-close" id="modalClose">&#x2715;</button>
-            </div>
-            <form id="editForm" novalidate>
-                <input type="hidden" id="editId" />
-                <div class="field">
-                    <label for="editDate">Date</label>
-                    <input type="date" id="editDate" required />
-                </div>
-                <div class="field">
-                    <label>Type</label>
-                    <div class="toggle-group">
-                        <button type="button" class="toggle active" data-edit-value="income">Income</button>
-                        <button type="button" class="toggle" data-edit-value="expense">Expense</button>
-                    </div>
-                    <input type="hidden" id="editType" value="income" />
-                </div>
-                <div class="field">
-                    <label for="editCategory">Category</label>
-                    <select id="editCategory" required>
-                        <optgroup label="Income">
-                            <option value="Salary">Salary</option>
-                            <option value="Freelance">Freelance</option>
-                            <option value="Investment">Investment</option>
-                            <option value="Other Income">Other Income</option>
-                        </optgroup>
-                        <optgroup label="Expense">
-                            <option value="Food">Food</option>
-                            <option value="Transport">Transport</option>
-                            <option value="Housing">Housing</option>
-                            <option value="Health">Health</option>
-                            <option value="Entertainment">Entertainment</option>
-                            <option value="Shopping">Shopping</option>
-                            <option value="Other Expense">Other Expense</option>
-                        </optgroup>
-                    </select>
-                </div>
-                <div class="field">
-                    <label for="editAmount">Amount</label>
-                    <div class="input-prefix">
-                        <span>Rp</span>
-                        <input type="number" id="editAmount" min="1" step="any" placeholder="0" required />
-                    </div>
-                </div>
-                <div class="field">
-                    <label for="editNote">Note <span class="optional">(optional)</span></label>
-                    <input type="text" id="editNote" maxlength="120" />
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn-cancel" id="modalCancel">Cancel</button>
-                    <button type="submit" class="btn-submit" id="editSubmitBtn">
-                        <span class="btn-text">Save Changes</span>
-                    </button>
-                </div>
-                <div class="form-message" id="editMessage"></div>
-            </form>
+  <!-- ── Edit Modal ──────────────────────────────────── -->
+  <div class="modal-overlay" id="editOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Transaction</h3>
+        <button class="modal-close" id="modalClose">&#x2715;</button>
+      </div>
+      <form id="editForm" novalidate>
+        <input type="hidden" id="editId" />
+        <div class="field">
+          <label for="editDate">Date</label>
+          <input type="date" id="editDate" required />
         </div>
+        <div class="field">
+          <label>Type</label>
+          <div class="toggle-group">
+            <button type="button" class="toggle active" data-edit-value="income">Income</button>
+            <button type="button" class="toggle"        data-edit-value="expense">Expense</button>
+          </div>
+          <input type="hidden" id="editType" value="income" />
+        </div>
+        <div class="field">
+          <label for="editCategory">Category</label>
+          <select id="editCategory" required>
+            <optgroup label="Income">
+              <option value="Salary">Salary</option>
+              <option value="Freelance">Freelance</option>
+              <option value="Investment">Investment</option>
+              <option value="Other Income">Other Income</option>
+            </optgroup>
+            <optgroup label="Expense">
+              <option value="Food">Food</option>
+              <option value="Transport">Transport</option>
+              <option value="Housing">Housing</option>
+              <option value="Health">Health</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Other Expense">Other Expense</option>
+            </optgroup>
+          </select>
+        </div>
+        <div class="field">
+          <label for="editAmount">Amount</label>
+          <div class="input-prefix">
+            <span>Rp</span>
+            <input type="number" id="editAmount" min="1" step="any" placeholder="0" required />
+          </div>
+        </div>
+        <div class="field">
+          <label for="editNote">Note <span class="optional">(optional)</span></label>
+          <input type="text" id="editNote" maxlength="120" />
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" id="modalCancel">Cancel</button>
+          <button type="submit" class="btn-submit" id="editSubmitBtn">
+            <span class="btn-text">Save Changes</span>
+          </button>
+        </div>
+        <div class="form-message" id="editMessage"></div>
+      </form>
     </div>
+  </div>
 
-    <script src="script.js"></script>
+  <script src="script.js"></script>
 </body>
-
 </html>

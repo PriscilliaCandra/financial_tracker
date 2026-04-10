@@ -1,0 +1,173 @@
+/* ── Variables (shared with main app) ───────────────────── */
+:root {
+  --bg:         #0f0f0f;
+  --surface:    #161616;
+  --surface2:   #1e1e1e;
+  --border:     #2a2a2a;
+  --text:       #f0ebe3;
+  --muted:      #6b6560;
+  --income:     #4ade80;
+  --accent:     #e8d5b0;
+  --expense:    #f87171;
+  --radius:     12px;
+  --font-display: 'DM Serif Display', Georgia, serif;
+  --font-body:    'DM Sans', sans-serif;
+  --font-mono:    'DM Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-weight: 300;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* ── Grain ───────────────────────────────────────────────── */
+.grain {
+  position: fixed; inset: 0; z-index: 999; pointer-events: none; opacity: .025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  background-size: 180px;
+}
+
+/* ── Decorative background lines ────────────────────────── */
+.auth-bg {
+  position: fixed; inset: 0; pointer-events: none; overflow: hidden;
+}
+.auth-bg-line {
+  position: absolute; left: -10%; width: 120%;
+  height: 1px; background: var(--border);
+  transform-origin: center;
+}
+.auth-bg-line:nth-child(1) { top: 28%; transform: rotate(-8deg); }
+.auth-bg-line:nth-child(2) { top: 52%; transform: rotate(-8deg); opacity: .5; }
+.auth-bg-line:nth-child(3) { top: 76%; transform: rotate(-8deg); opacity: .25; }
+
+/* ── Auth wrap ───────────────────────────────────────────── */
+.auth-wrap {
+  position: relative; z-index: 1;
+  width: 100%; padding: 1.5rem;
+  display: flex; justify-content: center;
+  animation: fadeUp .45s ease both;
+}
+
+.auth-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2.2rem 2rem;
+  width: 100%;
+  max-width: 380px;
+  position: relative;
+}
+.auth-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 2px; border-radius: var(--radius) var(--radius) 0 0;
+  background: linear-gradient(90deg, var(--accent), transparent);
+}
+
+/* ── Logo ────────────────────────────────────────────────── */
+.auth-logo {
+  display: flex; align-items: center; gap: .45rem;
+  margin-bottom: 1.8rem;
+}
+.auth-logo-icon { font-size: 1.2rem; color: var(--accent); }
+.auth-logo-text { font-family: var(--font-display); font-size: 1.2rem; letter-spacing: .04em; }
+
+.auth-title {
+  font-family: var(--font-display); font-size: 1.7rem; font-weight: 400;
+  line-height: 1.15; margin-bottom: .4rem;
+}
+.auth-sub {
+  color: var(--muted); font-size: .85rem; margin-bottom: 1.8rem; line-height: 1.5;
+}
+
+/* ── Fields ─────────────────────────────────────────────── */
+.field { margin-bottom: 1rem; }
+label {
+  display: block; font-size: .7rem; font-family: var(--font-mono);
+  letter-spacing: .09em; text-transform: uppercase; color: var(--muted); margin-bottom: .35rem;
+}
+input {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 7px; color: var(--text); padding: .65rem .85rem;
+  font-family: var(--font-body); font-size: .92rem; font-weight: 300;
+  outline: none; transition: border-color .2s;
+}
+input::placeholder { color: #3d3935; }
+input:focus { border-color: var(--accent); }
+
+.field-hint {
+  display: block; margin-top: .3rem;
+  font-size: .7rem; font-family: var(--font-mono); color: var(--muted); letter-spacing: .03em;
+}
+
+/* Eye toggle */
+.input-eye { position: relative; }
+.input-eye input { padding-right: 2.6rem; }
+.eye-btn {
+  position: absolute; right: .6rem; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; font-size: .9rem;
+  color: var(--muted); line-height: 1; padding: .2rem; transition: color .15s;
+}
+.eye-btn:hover { color: var(--text); }
+
+/* ── Strength meter ─────────────────────────────────────── */
+.strength-wrap {
+  display: flex; align-items: center; gap: .75rem;
+  margin-bottom: 1rem; margin-top: -.4rem;
+}
+.strength-track {
+  flex: 1; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden;
+}
+.strength-fill { height: 100%; width: 0; border-radius: 2px; transition: width .3s, background .3s; }
+.strength-label { font-family: var(--font-mono); font-size: .68rem; letter-spacing: .06em; min-width: 60px; text-align: right; }
+
+/* ── Message ─────────────────────────────────────────────── */
+.auth-message {
+  font-family: var(--font-mono); font-size: .75rem; letter-spacing: .03em;
+  min-height: 1.3em; margin-bottom: .6rem; text-align: center;
+}
+.auth-message.error   { color: var(--expense); }
+.auth-message.success { color: var(--income); }
+
+/* ── Submit button ───────────────────────────────────────── */
+.auth-btn {
+  width: 100%; padding: .8rem;
+  background: var(--accent); color: #1a1410;
+  border: none; border-radius: 7px;
+  font-family: var(--font-body); font-size: .95rem; font-weight: 500;
+  cursor: pointer; transition: opacity .18s, transform .12s;
+  margin-top: .2rem;
+}
+.auth-btn:hover  { opacity: .88; }
+.auth-btn:active { transform: scale(.98); }
+.auth-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── Switch link ─────────────────────────────────────────── */
+.auth-switch {
+  text-align: center; margin-top: 1.4rem;
+  font-size: .82rem; color: var(--muted);
+}
+.auth-switch a {
+  color: var(--accent); text-decoration: none; font-weight: 500;
+  transition: opacity .15s;
+}
+.auth-switch a:hover { opacity: .75; }
+
+/* ── Animation ───────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 420px) {
+  .auth-card { padding: 1.6rem 1.2rem; }
+}

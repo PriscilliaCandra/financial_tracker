@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ledger — Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="auth.css" />
+</head>
+
+<body>
+  <div class="grain"></div>
+  <div class="auth-bg">
+    <div class="auth-bg-line"></div>
+    <div class="auth-bg-line"></div>
+    <div class="auth-bg-line"></div>
+  </div>
+
+  <main class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <span class="auth-logo-icon">◈</span>
+        <span class="auth-logo-text">Ledger</span>
+      </div>
+      <h1 class="auth-title">Welcome back</h1>
+      <p class="auth-sub">Sign in to your account to continue tracking.</p>
+
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label for="username">Username</label>
+          <input type="text" id="username" placeholder="your username" autocomplete="username" />
+        </div>
+        <div class="field">
+          <label for="password">Password</label>
+          <div class="input-eye">
+            <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
+            <button type="button" class="eye-btn" id="eyeBtn"><span id="eyeIcon">👁</span></button>
+          </div>
+        </div>
+
+        <div class="auth-message" id="authMessage"></div>
+
+        <button type="submit" class="auth-btn" id="loginBtn">
+          <span class="auth-btn-text">Sign In</span>
+        </button>
+      </form>
+
+      <p class="auth-switch">Don't have an account? <a href="http://127.0.0.1:5000/register">Create one</a></p>
+    </div>
+  </main>
+
+  <script>
+    const API = "http://127.0.0.1:5000/api";
+    const APPROOT = "http://127.0.0.1:5000";
+
+    // Already logged in → go to dashboard
+    (function () {
+      var token = localStorage.getItem("token");
+      if (!token) return;
+      try {
+        var p = JSON.parse(atob(token.split(".")[1] + "=="));
+        if (p.exp > Date.now() / 1000) window.location.href = APPROOT + "/";
+      } catch (e) { localStorage.clear(); }
+    })();
+
+    var pwInput = document.getElementById("password");
+    document.getElementById("eyeBtn").addEventListener("click", function () {
+      pwInput.type = pwInput.type === "password" ? "text" : "password";
+      document.getElementById("eyeIcon").textContent = pwInput.type === "password" ? "👁" : "🙈";
+    });
+
+    // Ganti bagian login form submit menjadi:
+    document.getElementById("loginForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var username = document.getElementById("username").value.trim();
+      var password = pwInput.value;
+      var msg = document.getElementById("authMessage");
+      var btn = document.getElementById("loginBtn");
+
+      if (!username || !password) { showMsg("Please enter username and password.", "error"); return; }
+
+      btn.disabled = true;
+      document.querySelector(".auth-btn-text").textContent = "Signing in…";
+      try {
+        var res = await fetch(API + "/auth/login", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username: username, password: password })
+        });
+        var data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Login failed");
+
+        console.log("DEBUG - Response data:", data);
+        console.log("DEBUG - Token from server:", data.token);
+
+        if (!data.token) {
+          throw new Error("No token received from server");
+        }
+
+        // Simpan ke localStorage
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("username", data.username);
+
+        console.log("DEBUG - Token after save:", localStorage.getItem("token"));
+        console.log("DEBUG - Username after save:", localStorage.getItem("username"));
+
+        // 🔥 SET COOKIE juga
+        document.cookie = "token=" + data.token + "; path=/; max-age=" + (60 * 60 * 24 * 7);
+
+        console.log("DEBUG - About to redirect to:", APPROOT + "/");
+
+        // Gunakan timeout untuk memastikan localStorage tersimpan
+        setTimeout(function () {
+          window.location.href = APPROOT + "/";
+        }, 100);
+
+      } catch (err) {
+        console.error("DEBUG - Error:", err);
+        showMsg(err.message, "error");
+      } finally {
+        btn.disabled = false;
+        document.querySelector(".auth-btn-text").textContent = "Sign In";
+      }
+    });
+
+    function showMsg(text, type) {
+      var el = document.getElementById("authMessage");
+      el.textContent = text; el.className = "auth-message " + type;
+    }
+  </script>
+</body>
+
+</html>
