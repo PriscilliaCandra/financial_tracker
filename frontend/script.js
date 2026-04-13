@@ -3,7 +3,6 @@ const API = "http://127.0.0.1:5000/api";
 const APPROOT = "http://127.0.0.1:5000";
 
 /* ── Auth guard ─────────────────────────────────────────── */
-// Fungsi untuk cek validitas token
 function isTokenValid(token) {
   if (!token || token === "null" || token === "undefined") return false;
   try {
@@ -16,44 +15,80 @@ function isTokenValid(token) {
   }
 }
 
-// Hanya jalankan guard jika bukan di halaman login/register
 if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
   var token = localStorage.getItem("token");
-  console.log("Checking auth for path:", window.location.pathname);
-  console.log("Token exists:", !!token);
-  
   if (!isTokenValid(token)) {
-    console.log("No valid token found, redirecting to login");
     localStorage.clear();
     window.location.href = APPROOT + "/login";
-  } else {
-    console.log("Valid token found, continuing to dashboard");
   }
 }
 
-console.log("🚀 SCRIPT LOADED, current path:", window.location.pathname);
-console.log("Token present:", !!localStorage.getItem("token"));
+/* ── Data Categories ────────────────────────────────────── */
+const incomeCategories = ["Salary", "Freelance", "Investment", "Other Income"];
+const expenseCategories = ["Food", "Transport", "Housing", "Health", "Entertainment", "Shopping", "Other Expense"];
+
+/* ── Dynamic Category Functions ─────────────────────────── */
+function updateCategoryOptions(type) {
+  var categorySelect = document.getElementById("category");
+  if (!categorySelect) return;
+  
+  var previousValue = categorySelect.value;
+  categorySelect.innerHTML = '';
+  
+  var defaultOption = document.createElement('option');
+  defaultOption.value = '';
+  defaultOption.disabled = true;
+  defaultOption.selected = true;
+  defaultOption.textContent = 'Select…';
+  categorySelect.appendChild(defaultOption);
+  
+  var categories = type === 'income' ? incomeCategories : expenseCategories;
+  
+  categories.forEach(function(cat) {
+    var option = document.createElement('option');
+    option.value = cat;
+    option.textContent = cat;
+    categorySelect.appendChild(option);
+  });
+  
+  if (previousValue && categories.includes(previousValue)) {
+    categorySelect.value = previousValue;
+  }
+}
+
+function updateEditCategoryOptions(type) {
+  var editCategorySelect = document.getElementById("editCategory");
+  if (!editCategorySelect) return;
+  
+  var previousValue = editCategorySelect.value;
+  editCategorySelect.innerHTML = '';
+  
+  var categories = type === 'income' ? incomeCategories : expenseCategories;
+  
+  categories.forEach(function(cat) {
+    var option = document.createElement('option');
+    option.value = cat;
+    option.textContent = cat;
+    editCategorySelect.appendChild(option);
+  });
+  
+  if (previousValue && categories.includes(previousValue)) {
+    editCategorySelect.value = previousValue;
+  }
+}
 
 /* ── Auth fetch wrapper ─────────────────────────────────── */
 function authFetch(url, options) {
   options = options || {};
   options.headers = options.headers || {};
-
   var token = localStorage.getItem("token");
-  console.log("DEBUG authFetch for:", url);
-  console.log("Token exists:", !!token);
-
   if (token && token !== "null" && token !== "undefined" && token.length > 10) {
     options.headers["Authorization"] = "Bearer " + token;
-    console.log("Added Authorization header");
   } else {
-    console.log("No valid token found for fetch");
     return Promise.reject(new Error("No token"));
   }
-
   return fetch(url, options).then(function (res) {
     if (res.status === 401) {
-      console.log("Got 401, clearing localStorage and redirecting");
       localStorage.clear();
       window.location.href = APPROOT + "/login";
       throw new Error("Unauthorized");
@@ -64,8 +99,6 @@ function authFetch(url, options) {
 
 /* ── State ──────────────────────────────────────────────── */
 var allTransactions = [];
-
-// Filter state
 var filterType = "all";
 var filterSort = "latest";
 var filterCategory = "";
@@ -89,7 +122,6 @@ var editMessage = document.getElementById("editMessage");
 var editSubmitBtn = document.getElementById("editSubmitBtn");
 
 /* ── Helpers ────────────────────────────────────────────── */
-
 function formatRp(n) {
   return new Intl.NumberFormat("id-ID", {
     style: "currency", currency: "IDR", minimumFractionDigits: 0
@@ -129,9 +161,7 @@ function renderHeaderDate() {
 }
 
 function escHtml(s) {
-  return String(s)
-    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 function spentPct(expense, income) {
@@ -140,7 +170,6 @@ function spentPct(expense, income) {
 }
 
 /* ── Summary ────────────────────────────────────────────── */
-
 async function fetchSummary() {
   try {
     var data = await authFetch(API + "/summary").then(function (r) { return r.json(); });
@@ -149,91 +178,45 @@ async function fetchSummary() {
     if (balanceEl) balanceEl.textContent = formatRp(data.balance);
   } catch (e) {
     console.error("Fetch summary error:", e);
-    if (totalIncomeEl) totalIncomeEl.textContent = "—";
-    if (totalExpenseEl) totalExpenseEl.textContent = "—";
-    if (balanceEl) balanceEl.textContent = "—";
   }
 }
 
 /* ── Budget Tracker ─────────────────────────────────────── */
-
 async function fetchBudget() {
   try {
     var data = await authFetch(API + "/salary-summary").then(function (r) { return r.json(); });
     if (budgetWrapper) renderBudget(data);
   } catch (e) { 
     console.error("Fetch budget error:", e);
-    if (budgetWrapper) budgetWrapper.innerHTML = '<div class="budget-nudge">Unable to load budget data</div>';
   }
 }
 
 function renderBudget(data) {
   if (!budgetWrapper) return;
-  
   if (!data.cycles || data.cycles.length === 0) {
-    budgetWrapper.innerHTML =
-      '<div class="budget-nudge">' +
-      '<span class="budget-nudge-icon">◎</span>' +
-      '<span>No salary detected yet. Add an <strong>Income → Salary</strong> transaction to enable budget tracking.</span>' +
-      '</div>';
+    budgetWrapper.innerHTML = '<div class="budget-nudge"><span class="budget-nudge-icon">◎</span><span>No salary detected yet. Add an <strong>Income → Salary</strong> transaction to enable budget tracking.</span></div>';
     return;
   }
-
   var cur = data.current_cycle;
   var status = cur ? cur.status : "ok";
   var spent = cur ? spentPct(cur.total_expense, cur.total_income) : 0;
   var remaining = cur ? cur.balance : 0;
   var remainingPct = cur && cur.total_income > 0 ? Math.round((cur.balance / cur.total_income) * 100) : 0;
-
   var alertText = "";
-  if (status === "critical") alertText = "⚠ Critical: only " + remainingPct + "% of budget remaining. Consider pausing non-essential spending.";
-  if (status === "warning") alertText = "◉ Warning: " + remainingPct + "% of budget remaining. Watch your spending.";
-
+  if (status === "critical") alertText = "⚠ Critical: only " + remainingPct + "% of budget remaining.";
+  if (status === "warning") alertText = "◉ Warning: " + remainingPct + "% of budget remaining.";
   var badgeHtml = "";
   if (status === "warning") badgeHtml = '<span class="budget-badge warning visible"><span class="budget-badge-dot"></span>Warning</span>';
   if (status === "critical") badgeHtml = '<span class="budget-badge critical visible"><span class="budget-badge-dot"></span>Critical</span>';
-
   var startFmt = cur ? new Date(cur.start + "T00:00:00").toLocaleDateString("en-US", { day: "numeric", month: "short" }) : "—";
   var endFmt = cur ? new Date(cur.end + "T00:00:00").toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" }) : "—";
-
-  budgetWrapper.innerHTML =
-    '<div class="budget-card status-' + status + '">' +
-    '<div class="budget-card-bar"></div>' +
-    '<div class="budget-card-inner">' +
-    '<div class="budget-left">' +
-    '<div class="budget-cycle-label">Current Salary Cycle</div>' +
-    '<div class="budget-dates">' + startFmt + ' &rarr; ' + endFmt + '</div>' +
-    '<div class="budget-progress-wrap">' +
-    '<div class="budget-progress-track">' +
-    '<div class="budget-progress-fill" id="budgetFill" style="width:0%"></div>' +
-    '</div>' +
-    '<div class="budget-progress-labels">' +
-    '<span>Rp 0</span>' +
-    '<span>Spent: ' + spent + '%</span>' +
-    '<span>' + (cur ? formatRpShort(cur.total_income) : "—") + '</span>' +
-    '</div>' +
-    '</div>' +
-    '<div class="budget-stats">' +
-    '<div class="budget-stat"><div class="budget-stat-label">Salary</div><div class="budget-stat-value income">' + (cur ? formatRpShort(cur.total_income) : "—") + '</div></div>' +
-    '<div class="budget-stat"><div class="budget-stat-label">Spent</div><div class="budget-stat-value expense">' + (cur ? formatRpShort(cur.total_expense) : "—") + '</div></div>' +
-    '<div class="budget-stat"><div class="budget-stat-label">Remaining</div><div class="budget-stat-value balance">' + (cur ? formatRpShort(remaining) : "—") + '</div></div>' +
-    '</div>' +
-    '</div>' +
-    '<div class="budget-right">' +
-    badgeHtml +
-    '<button class="btn-history" id="btnHistory">All Cycles ›</button>' +
-    '</div>' +
-    '</div>' +
-    '<div class="budget-alert ' + (status !== "ok" ? status : "") + '">' + alertText + '</div>' +
-    '</div>';
-
+  budgetWrapper.innerHTML = '<div class="budget-card status-' + status + '"><div class="budget-card-bar"></div><div class="budget-card-inner"><div class="budget-left"><div class="budget-cycle-label">Current Salary Cycle</div><div class="budget-dates">' + startFmt + ' → ' + endFmt + '</div><div class="budget-progress-wrap"><div class="budget-progress-track"><div class="budget-progress-fill" id="budgetFill" style="width:0%"></div></div><div class="budget-progress-labels"><span>Rp 0</span><span>Spent: ' + spent + '%</span><span>' + (cur ? formatRpShort(cur.total_income) : "—") + '</span></div></div><div class="budget-stats"><div class="budget-stat"><div class="budget-stat-label">Salary</div><div class="budget-stat-value income">' + (cur ? formatRpShort(cur.total_income) : "—") + '</div></div><div class="budget-stat"><div class="budget-stat-label">Spent</div><div class="budget-stat-value expense">' + (cur ? formatRpShort(cur.total_expense) : "—") + '</div></div><div class="budget-stat"><div class="budget-stat-label">Remaining</div><div class="budget-stat-value balance">' + (cur ? formatRpShort(remaining) : "—") + '</div></div></div></div><div class="budget-right">' + badgeHtml + '<button class="btn-history" id="btnHistory">All Cycles ›</button></div></div><div class="budget-alert ' + (status !== "ok" ? status : "") + '">' + alertText + '</div></div>';
   requestAnimationFrame(function () {
     setTimeout(function () {
       var fill = document.getElementById("budgetFill");
       if (fill) fill.style.width = spent + "%";
     }, 80);
   });
-
   var btnHistory = document.getElementById("btnHistory");
   if (btnHistory) {
     btnHistory.addEventListener("click", function () {
@@ -243,11 +226,8 @@ function renderBudget(data) {
   }
 }
 
-/* ── Cycle History Drawer ───────────────────────────────── */
-
 function renderDrawer(cycles) {
   if (!drawerBody) return;
-  
   var reversed = cycles.slice().reverse();
   drawerBody.innerHTML = reversed.map(function (cyc, i) {
     var s = cyc.status;
@@ -256,42 +236,15 @@ function renderDrawer(cycles) {
     var badgeTxt = cyc.is_current ? "Current" : s.charAt(0).toUpperCase() + s.slice(1);
     var startFmt = new Date(cyc.start + "T00:00:00").toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
     var endFmt = new Date(cyc.end + "T00:00:00").toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
-    return (
-      '<div class="cycle-card status-' + s + (cyc.is_current ? " is-current" : "") + '" style="animation-delay:' + (i * 0.05) + 's">' +
-      '<div class="cycle-card-head">' +
-      '<span class="cycle-card-label">' + escHtml(cyc.label) + '</span>' +
-      '<span class="cycle-card-badge ' + badge + '">' + badgeTxt + '</span>' +
-      '</div>' +
-      '<div class="cycle-card-body">' +
-      '<div class="cycle-dates">' + startFmt + ' → ' + endFmt + '</div>' +
-      '<div class="cycle-mini-track"><div class="cycle-mini-fill ' + s + '" style="width:' + sp + '%"></div></div>' +
-      '<div class="cycle-nums">' +
-      '<div><div class="cycle-num-label">Salary</div><div class="cycle-num-val income">' + formatRpShort(cyc.total_income) + '</div></div>' +
-      '<div><div class="cycle-num-label">Spent</div><div class="cycle-num-val expense">' + formatRpShort(cyc.total_expense) + '</div></div>' +
-      '<div><div class="cycle-num-label">Left</div><div class="cycle-num-val balance">' + formatRpShort(cyc.balance) + '</div></div>' +
-      '<div><div class="cycle-num-label">Txns</div><div class="cycle-num-val">' + cyc.transactions.length + '</div></div>' +
-      '</div>' +
-      '</div>' +
-      '</div>'
-    );
+    return '<div class="cycle-card status-' + s + (cyc.is_current ? " is-current" : "") + '" style="animation-delay:' + (i * 0.05) + 's"><div class="cycle-card-head"><span class="cycle-card-label">' + escHtml(cyc.label) + '</span><span class="cycle-card-badge ' + badge + '">' + badgeTxt + '</span></div><div class="cycle-card-body"><div class="cycle-dates">' + startFmt + ' → ' + endFmt + '</div><div class="cycle-mini-track"><div class="cycle-mini-fill ' + s + '" style="width:' + sp + '%"></div></div><div class="cycle-nums"><div><div class="cycle-num-label">Salary</div><div class="cycle-num-val income">' + formatRpShort(cyc.total_income) + '</div></div><div><div class="cycle-num-label">Spent</div><div class="cycle-num-val expense">' + formatRpShort(cyc.total_expense) + '</div></div><div><div class="cycle-num-label">Left</div><div class="cycle-num-val balance">' + formatRpShort(cyc.balance) + '</div></div><div><div class="cycle-num-label">Txns</div><div class="cycle-num-val">' + cyc.transactions.length + '</div></div></div></div></div>';
   }).join("");
 }
 
 var drawerClose = document.getElementById("drawerClose");
-if (drawerClose) {
-  drawerClose.addEventListener("click", function () { 
-    if (drawerOverlay) drawerOverlay.classList.remove("open"); 
-  });
-}
-
-if (drawerOverlay) {
-  drawerOverlay.addEventListener("click", function (e) { 
-    if (e.target === drawerOverlay) drawerOverlay.classList.remove("open"); 
-  });
-}
+if (drawerClose) drawerClose.addEventListener("click", function () { if (drawerOverlay) drawerOverlay.classList.remove("open"); });
+if (drawerOverlay) drawerOverlay.addEventListener("click", function (e) { if (e.target === drawerOverlay) drawerOverlay.classList.remove("open"); });
 
 /* ── Transaction List ───────────────────────────────────── */
-
 async function fetchTransactions() {
   try {
     var params = [];
@@ -299,7 +252,6 @@ async function fetchTransactions() {
     if (filterFrom) params.push("from=" + encodeURIComponent(filterFrom));
     if (filterTo) params.push("to=" + encodeURIComponent(filterTo));
     var url = API + "/transactions" + (params.length ? "?" + params.join("&") : "");
-
     allTransactions = await authFetch(url).then(function (r) { return r.json(); });
     renderList();
   } catch (e) {
@@ -310,22 +262,10 @@ async function fetchTransactions() {
 
 function renderList() {
   if (!txList) return;
-  
-  var items = filterType === "all"
-    ? allTransactions.slice()
-    : allTransactions.filter(function (t) { return t.type === filterType; });
-
-  if (filterCategory) {
-    items = items.filter(function (t) { return t.category === filterCategory; });
-  }
-
-  if (filterFrom) {
-    items = items.filter(function (t) { return t.date >= filterFrom; });
-  }
-  if (filterTo) {
-    items = items.filter(function (t) { return t.date <= filterTo; });
-  }
-
+  var items = filterType === "all" ? allTransactions.slice() : allTransactions.filter(function (t) { return t.type === filterType; });
+  if (filterCategory) items = items.filter(function (t) { return t.category === filterCategory; });
+  if (filterFrom) items = items.filter(function (t) { return t.date >= filterFrom; });
+  if (filterTo) items = items.filter(function (t) { return t.date <= filterTo; });
   items.sort(function (a, b) {
     if (filterSort === "latest") return (a.date < b.date) ? 1 : (a.date > b.date) ? -1 : 0;
     if (filterSort === "oldest") return (a.date > b.date) ? 1 : (a.date < b.date) ? -1 : 0;
@@ -333,33 +273,14 @@ function renderList() {
     if (filterSort === "lowest") return a.amount - b.amount;
     return 0;
   });
-
   updateFilterSummary(items.length);
-
   if (items.length === 0) {
     txList.innerHTML = '<li class="tx-empty">No transactions match your filters.</li>';
     return;
   }
-
   txList.innerHTML = items.map(function (t, i) {
-    return (
-      '<li class="tx-item" data-id="' + t.id + '" style="animation-delay:' + (i * 0.035) + 's">' +
-      '<span class="tx-dot tx-dot--' + t.type + '"></span>' +
-      '<div class="tx-meta">' +
-      '<div class="tx-category">' + escHtml(t.category) + '</div>' +
-      '<div class="tx-sub">' + t.date + (t.note ? ' · ' + escHtml(t.note) : '') + '</div>' +
-      '</div>' +
-      '<span class="tx-amount tx-amount--' + t.type + '">' +
-      (t.type === "income" ? "+" : "−") + formatRp(t.amount) +
-      '</span>' +
-      '<div class="tx-actions">' +
-      '<button class="btn-action btn-edit"   title="Edit"   data-id="' + t.id + '">&#9998;</button>' +
-      '<button class="btn-action btn-delete" title="Delete" data-id="' + t.id + '">&#x2715;</button>' +
-      '</div>' +
-      '</li>'
-    );
+    return '<li class="tx-item" data-id="' + t.id + '" style="animation-delay:' + (i * 0.035) + 's"><span class="tx-dot tx-dot--' + t.type + '"></span><div class="tx-meta"><div class="tx-category">' + escHtml(t.category) + '</div><div class="tx-sub">' + t.date + (t.note ? ' · ' + escHtml(t.note) : '') + '</div></div><span class="tx-amount tx-amount--' + t.type + '">' + (t.type === "income" ? "+" : "−") + formatRp(t.amount) + '</span><div class="tx-actions"><button class="btn-action btn-edit" title="Edit" data-id="' + t.id + '">&#9998;</button><button class="btn-action btn-delete" title="Delete" data-id="' + t.id + '">&#x2715;</button></div></li>';
   }).join("");
-
   txList.querySelectorAll(".btn-edit").forEach(function (btn) {
     btn.addEventListener("click", function () { openEditModal(parseInt(btn.dataset.id)); });
   });
@@ -369,7 +290,6 @@ function renderList() {
 }
 
 /* ── Add Transaction ────────────────────────────────────── */
-
 if (txForm) {
   txForm.addEventListener("submit", async function (e) {
     e.preventDefault();
@@ -415,24 +335,17 @@ if (txForm) {
 }
 
 /* ── Edit Transaction ───────────────────────────────────── */
-
 function openEditModal(id) {
   var t = allTransactions.find(function (tx) { return tx.id === id; });
   if (!t) return;
-  
-  var editId = document.getElementById("editId");
-  var editDate = document.getElementById("editDate");
-  var editCategory = document.getElementById("editCategory");
-  var editAmount = document.getElementById("editAmount");
-  var editNote = document.getElementById("editNote");
-  
-  if (editId) editId.value = t.id;
-  if (editDate) editDate.value = t.date;
-  if (editCategory) editCategory.value = t.category;
-  if (editAmount) editAmount.value = t.amount;
-  if (editNote) editNote.value = t.note || "";
-  
+  document.getElementById("editId").value = t.id;
+  document.getElementById("editDate").value = t.date;
+  document.getElementById("editAmount").value = t.amount;
+  document.getElementById("editNote").value = t.note || "";
   setEditType(t.type);
+  // Set category setelah type di-set
+  var editCategorySelect = document.getElementById("editCategory");
+  if (editCategorySelect) editCategorySelect.value = t.category;
   if (editOverlay) editOverlay.classList.add("open");
 }
 
@@ -444,15 +357,9 @@ function closeEditModal() {
 
 var modalClose = document.getElementById("modalClose");
 if (modalClose) modalClose.addEventListener("click", closeEditModal);
-
 var modalCancel = document.getElementById("modalCancel");
 if (modalCancel) modalCancel.addEventListener("click", closeEditModal);
-
-if (editOverlay) {
-  editOverlay.addEventListener("click", function (e) { 
-    if (e.target === editOverlay) closeEditModal(); 
-  });
-}
+if (editOverlay) editOverlay.addEventListener("click", function (e) { if (e.target === editOverlay) closeEditModal(); });
 
 if (editForm) {
   editForm.addEventListener("submit", async function (e) {
@@ -497,7 +404,6 @@ if (editForm) {
 }
 
 /* ── Delete Transaction ─────────────────────────────────── */
-
 async function confirmDelete(id) {
   var t = allTransactions.find(function (tx) { return tx.id === id; });
   if (!t) return;
@@ -510,13 +416,13 @@ async function confirmDelete(id) {
 }
 
 /* ── Type Toggles ───────────────────────────────────────── */
-
 function setType(value) {
   var typeInput = document.getElementById("type");
   if (typeInput) typeInput.value = value;
   document.querySelectorAll(".toggle[data-value]").forEach(function (btn) {
     btn.classList.toggle("active", btn.dataset.value === value);
   });
+  updateCategoryOptions(value);
 }
 
 function setEditType(value) {
@@ -525,6 +431,7 @@ function setEditType(value) {
   document.querySelectorAll(".toggle[data-edit-value]").forEach(function (btn) {
     btn.classList.toggle("active", btn.dataset.editValue === value);
   });
+  updateEditCategoryOptions(value);
 }
 
 document.querySelectorAll(".toggle[data-value]").forEach(function (btn) {
@@ -535,8 +442,6 @@ document.querySelectorAll(".toggle[data-edit-value]").forEach(function (btn) {
 });
 
 /* ── Filter & Sort Controls ─────────────────────────────── */
-
-// Toggle filter bar visibility
 var btnFilterToggle = document.getElementById("btnFilterToggle");
 if (btnFilterToggle) {
   btnFilterToggle.addEventListener("click", function () {
@@ -545,8 +450,6 @@ if (btnFilterToggle) {
     this.classList.toggle("active");
   });
 }
-
-// Type pills
 document.querySelectorAll(".filter").forEach(function (btn) {
   btn.addEventListener("click", function () {
     filterType = btn.dataset.filter;
@@ -555,8 +458,6 @@ document.querySelectorAll(".filter").forEach(function (btn) {
     renderList();
   });
 });
-
-// Sort pills
 document.querySelectorAll(".sort-btn").forEach(function (btn) {
   btn.addEventListener("click", function () {
     filterSort = btn.dataset.sort;
@@ -565,34 +466,12 @@ document.querySelectorAll(".sort-btn").forEach(function (btn) {
     renderList();
   });
 });
-
-// Category dropdown — re-fetch from server with category param for accuracy
 var filterCategoryEl = document.getElementById("filterCategory");
-if (filterCategoryEl) {
-  filterCategoryEl.addEventListener("change", function () {
-    filterCategory = this.value;
-    fetchTransactions();
-  });
-}
-
-// Date range — re-fetch from server with date params
+if (filterCategoryEl) filterCategoryEl.addEventListener("change", function () { filterCategory = this.value; fetchTransactions(); });
 var filterFromEl = document.getElementById("filterFrom");
-if (filterFromEl) {
-  filterFromEl.addEventListener("change", function () {
-    filterFrom = this.value;
-    fetchTransactions();
-  });
-}
-
+if (filterFromEl) filterFromEl.addEventListener("change", function () { filterFrom = this.value; fetchTransactions(); });
 var filterToEl = document.getElementById("filterTo");
-if (filterToEl) {
-  filterToEl.addEventListener("change", function () {
-    filterTo = this.value;
-    fetchTransactions();
-  });
-}
-
-// Reset all filters
+if (filterToEl) filterToEl.addEventListener("change", function () { filterTo = this.value; fetchTransactions(); });
 var btnFilterReset = document.getElementById("btnFilterReset");
 if (btnFilterReset) {
   btnFilterReset.addEventListener("click", function () {
@@ -604,41 +483,28 @@ if (btnFilterReset) {
     if (filterCategoryEl) filterCategoryEl.value = "";
     if (filterFromEl) filterFromEl.value = "";
     if (filterToEl) filterToEl.value = "";
-    document.querySelectorAll(".filter").forEach(function (b) {
-      b.classList.toggle("active", b.dataset.filter === "all");
-    });
-    document.querySelectorAll(".sort-btn").forEach(function (b) {
-      b.classList.toggle("active", b.dataset.sort === "latest");
-    });
+    document.querySelectorAll(".filter").forEach(function (b) { b.classList.toggle("active", b.dataset.filter === "all"); });
+    document.querySelectorAll(".sort-btn").forEach(function (b) { b.classList.toggle("active", b.dataset.sort === "latest"); });
     fetchTransactions();
   });
 }
 
-// Helper: build summary line above the list
 function updateFilterSummary(count) {
   var el = document.getElementById("filterSummary");
   if (!el) return;
-  
   var parts = [];
   if (filterType !== "all") parts.push(filterType);
   if (filterCategory) parts.push(filterCategory);
-  if (filterFrom || filterTo) {
-    var range = (filterFrom || "…") + " → " + (filterTo || "…");
-    parts.push(range);
-  }
+  if (filterFrom || filterTo) parts.push((filterFrom || "…") + " → " + (filterTo || "…"));
   if (filterSort !== "latest") parts.push("sort: " + filterSort);
-
   if (parts.length === 0) {
     el.innerHTML = "";
   } else {
-    el.innerHTML = "Showing <span>" + count + "</span> result" + (count !== 1 ? "s" : "") +
-      " — " + parts.map(function (p) { return "<span>" + escHtml(p) + "</span>"; }).join(", ");
+    el.innerHTML = "Showing <span>" + count + "</span> result" + (count !== 1 ? "s" : "") + " — " + parts.map(function (p) { return "<span>" + escHtml(p) + "</span>"; }).join(", ");
   }
 }
 
 /* ── Refresh ────────────────────────────────────────────── */
-
-// DEFINE REFRESH FUNCTION HERE
 async function refresh() {
   console.log("Refreshing data...");
   try {
@@ -650,25 +516,16 @@ async function refresh() {
 }
 
 /* ── Init ───────────────────────────────────────────────── */
-
 function init() {
-  console.log("Initializing dashboard...");
-  console.log("Current token:", localStorage.getItem("token") ? "Present" : "Missing");
-  
-  // Cek token lagi
   if (!isTokenValid(localStorage.getItem("token"))) {
-    console.log("Token invalid in init, redirecting");
     window.location.href = APPROOT + "/login";
     return;
   }
-  
   renderHeaderDate();
   setDefaultDate();
-
   var username = localStorage.getItem("username") || "";
   var headerEl = document.getElementById("headerUsername");
   if (headerEl) headerEl.textContent = username ? "◈ " + username : "";
-
   var logoutBtn = document.getElementById("logoutBtn");
   if (logoutBtn) {
     logoutBtn.addEventListener("click", function () {
@@ -678,14 +535,13 @@ function init() {
       }
     });
   }
-
-  // Load data
+  // Inisialisasi dropdown category dengan default income
+  updateCategoryOptions('income');
+  updateEditCategoryOptions('income');
   refresh();
 }
 
-// Hanya jalankan init jika di halaman dashboard (bukan login/register)
 if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
-  // Tambahkan delay kecil untuk memastikan semua DOM siap
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
