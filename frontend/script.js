@@ -1,51 +1,38 @@
-/* ═══════════════════════════════════════════════════════════
-   Ledger — script.js
-   All API calls go to Flask on port 5000.
-   Auth guard redirects to Flask /login if no valid token.
-   ═══════════════════════════════════════════════════════════ */
-
+console.log("DEBUG TOKEN (script.js):", localStorage.getItem("token"));
 const API = "http://127.0.0.1:5000/api";
 const APPROOT = "http://127.0.0.1:5000";
 
 /* ── Auth guard ─────────────────────────────────────────── */
-(function () {
-  console.log("DEBUG - Auth guard running");
-  var token = localStorage.getItem("token");
-  console.log("DEBUG - Token found:", token);
-  console.log("DEBUG - Token type:", typeof token);
-  console.log("DEBUG - Token length:", token ? token.length : 0);
-
-  if (!token || token === "null" || token === "undefined" || token.trim() === "") {
-    console.log("DEBUG - No valid token, redirecting to login");
-    localStorage.clear();
-    window.location.href = APPROOT + "/login";
-    return;
-  }
-
+// Fungsi untuk cek validitas token
+function isTokenValid(token) {
+  if (!token || token === "null" || token === "undefined") return false;
   try {
     var parts = token.split(".");
-    if (parts.length !== 3) {
-      console.log("DEBUG - Invalid token format, parts:", parts.length);
-      throw new Error("Invalid token");
-    }
+    if (parts.length !== 3) return false;
     var p = JSON.parse(atob(parts[1]));
-    console.log("DEBUG - Token payload:", p);
-    console.log("DEBUG - Token expiry:", new Date(p.exp * 1000));
-    console.log("DEBUG - Current time:", new Date());
-
-    if (p.exp < Date.now() / 1000) {
-      console.log("DEBUG - Token expired");
-      localStorage.clear();
-      window.location.href = APPROOT + "/login";
-    } else {
-      console.log("DEBUG - Token valid, staying on dashboard");
-    }
+    return p.exp > Date.now() / 1000;
   } catch (e) {
-    console.error("DEBUG - Token verification error:", e);
+    return false;
+  }
+}
+
+// Hanya jalankan guard jika bukan di halaman login/register
+if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
+  var token = localStorage.getItem("token");
+  console.log("Checking auth for path:", window.location.pathname);
+  console.log("Token exists:", !!token);
+  
+  if (!isTokenValid(token)) {
+    console.log("No valid token found, redirecting to login");
     localStorage.clear();
     window.location.href = APPROOT + "/login";
+  } else {
+    console.log("Valid token found, continuing to dashboard");
   }
-})();
+}
+
+console.log("🚀 SCRIPT LOADED, current path:", window.location.pathname);
+console.log("Token present:", !!localStorage.getItem("token"));
 
 /* ── Auth fetch wrapper ─────────────────────────────────── */
 function authFetch(url, options) {
@@ -53,20 +40,23 @@ function authFetch(url, options) {
   options.headers = options.headers || {};
 
   var token = localStorage.getItem("token");
-  // Hanya tambahkan Authorization header jika token ada dan bukan null
-  if (token && token !== "null" && token !== "undefined") {
+  console.log("DEBUG authFetch for:", url);
+  console.log("Token exists:", !!token);
+
+  if (token && token !== "null" && token !== "undefined" && token.length > 10) {
     options.headers["Authorization"] = "Bearer " + token;
+    console.log("Added Authorization header");
   } else {
-    // Jika tidak ada token, langsung redirect ke login
-    localStorage.clear();
-    window.location.href = APPROOT + "/login";
-    return Promise.reject("No token");
+    console.log("No valid token found for fetch");
+    return Promise.reject(new Error("No token"));
   }
 
   return fetch(url, options).then(function (res) {
     if (res.status === 401) {
+      console.log("Got 401, clearing localStorage and redirecting");
       localStorage.clear();
       window.location.href = APPROOT + "/login";
+      throw new Error("Unauthorized");
     }
     return res;
   });
@@ -74,7 +64,13 @@ function authFetch(url, options) {
 
 /* ── State ──────────────────────────────────────────────── */
 var allTransactions = [];
-var activeFilter = "all";
+
+// Filter state
+var filterType = "all";
+var filterSort = "latest";
+var filterCategory = "";
+var filterFrom = "";
+var filterTo = "";
 
 /* ── DOM refs ───────────────────────────────────────────── */
 var txList = document.getElementById("txList");
@@ -107,19 +103,29 @@ function formatRpShort(n) {
 }
 
 function showMessage(el, text, type) {
+  if (!el) return;
   el.textContent = text;
   el.className = "form-message " + type;
-  setTimeout(function () { el.textContent = ""; el.className = "form-message"; }, 3000);
+  setTimeout(function () { 
+    if (el) {
+      el.textContent = ""; 
+      el.className = "form-message"; 
+    }
+  }, 3000);
 }
 
 function setDefaultDate() {
-  document.getElementById("date").value = new Date().toISOString().slice(0, 10);
+  var dateInput = document.getElementById("date");
+  if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
 }
 
 function renderHeaderDate() {
-  document.getElementById("headerDate").textContent = new Date()
-    .toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
-    .toUpperCase();
+  var headerDate = document.getElementById("headerDate");
+  if (headerDate) {
+    headerDate.textContent = new Date()
+      .toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+      .toUpperCase();
+  }
 }
 
 function escHtml(s) {
@@ -138,11 +144,14 @@ function spentPct(expense, income) {
 async function fetchSummary() {
   try {
     var data = await authFetch(API + "/summary").then(function (r) { return r.json(); });
-    totalIncomeEl.textContent = formatRp(data.total_income);
-    totalExpenseEl.textContent = formatRp(data.total_expense);
-    balanceEl.textContent = formatRp(data.balance);
+    if (totalIncomeEl) totalIncomeEl.textContent = formatRp(data.total_income);
+    if (totalExpenseEl) totalExpenseEl.textContent = formatRp(data.total_expense);
+    if (balanceEl) balanceEl.textContent = formatRp(data.balance);
   } catch (e) {
-    [totalIncomeEl, totalExpenseEl, balanceEl].forEach(function (el) { el.textContent = "—"; });
+    console.error("Fetch summary error:", e);
+    if (totalIncomeEl) totalIncomeEl.textContent = "—";
+    if (totalExpenseEl) totalExpenseEl.textContent = "—";
+    if (balanceEl) balanceEl.textContent = "—";
   }
 }
 
@@ -151,11 +160,16 @@ async function fetchSummary() {
 async function fetchBudget() {
   try {
     var data = await authFetch(API + "/salary-summary").then(function (r) { return r.json(); });
-    renderBudget(data);
-  } catch (e) { budgetWrapper.innerHTML = ""; }
+    if (budgetWrapper) renderBudget(data);
+  } catch (e) { 
+    console.error("Fetch budget error:", e);
+    if (budgetWrapper) budgetWrapper.innerHTML = '<div class="budget-nudge">Unable to load budget data</div>';
+  }
 }
 
 function renderBudget(data) {
+  if (!budgetWrapper) return;
+  
   if (!data.cycles || data.cycles.length === 0) {
     budgetWrapper.innerHTML =
       '<div class="budget-nudge">' +
@@ -220,15 +234,20 @@ function renderBudget(data) {
     }, 80);
   });
 
-  document.getElementById("btnHistory").addEventListener("click", function () {
-    renderDrawer(data.cycles);
-    drawerOverlay.classList.add("open");
-  });
+  var btnHistory = document.getElementById("btnHistory");
+  if (btnHistory) {
+    btnHistory.addEventListener("click", function () {
+      renderDrawer(data.cycles);
+      if (drawerOverlay) drawerOverlay.classList.add("open");
+    });
+  }
 }
 
 /* ── Cycle History Drawer ───────────────────────────────── */
 
 function renderDrawer(cycles) {
+  if (!drawerBody) return;
+  
   var reversed = cycles.slice().reverse();
   drawerBody.innerHTML = reversed.map(function (cyc, i) {
     var s = cyc.status;
@@ -258,27 +277,67 @@ function renderDrawer(cycles) {
   }).join("");
 }
 
-document.getElementById("drawerClose").addEventListener("click", function () { drawerOverlay.classList.remove("open"); });
-drawerOverlay.addEventListener("click", function (e) { if (e.target === drawerOverlay) drawerOverlay.classList.remove("open"); });
+var drawerClose = document.getElementById("drawerClose");
+if (drawerClose) {
+  drawerClose.addEventListener("click", function () { 
+    if (drawerOverlay) drawerOverlay.classList.remove("open"); 
+  });
+}
+
+if (drawerOverlay) {
+  drawerOverlay.addEventListener("click", function (e) { 
+    if (e.target === drawerOverlay) drawerOverlay.classList.remove("open"); 
+  });
+}
 
 /* ── Transaction List ───────────────────────────────────── */
 
 async function fetchTransactions() {
   try {
-    allTransactions = await authFetch(API + "/transactions").then(function (r) { return r.json(); });
+    var params = [];
+    if (filterCategory) params.push("category=" + encodeURIComponent(filterCategory));
+    if (filterFrom) params.push("from=" + encodeURIComponent(filterFrom));
+    if (filterTo) params.push("to=" + encodeURIComponent(filterTo));
+    var url = API + "/transactions" + (params.length ? "?" + params.join("&") : "");
+
+    allTransactions = await authFetch(url).then(function (r) { return r.json(); });
     renderList();
   } catch (e) {
-    txList.innerHTML = '<li class="tx-empty">Could not load transactions.</li>';
+    console.error("Fetch transactions error:", e);
+    if (txList) txList.innerHTML = '<li class="tx-empty">Could not load transactions.</li>';
   }
 }
 
 function renderList() {
-  var items = activeFilter === "all"
-    ? allTransactions
-    : allTransactions.filter(function (t) { return t.type === activeFilter; });
+  if (!txList) return;
+  
+  var items = filterType === "all"
+    ? allTransactions.slice()
+    : allTransactions.filter(function (t) { return t.type === filterType; });
+
+  if (filterCategory) {
+    items = items.filter(function (t) { return t.category === filterCategory; });
+  }
+
+  if (filterFrom) {
+    items = items.filter(function (t) { return t.date >= filterFrom; });
+  }
+  if (filterTo) {
+    items = items.filter(function (t) { return t.date <= filterTo; });
+  }
+
+  items.sort(function (a, b) {
+    if (filterSort === "latest") return (a.date < b.date) ? 1 : (a.date > b.date) ? -1 : 0;
+    if (filterSort === "oldest") return (a.date > b.date) ? 1 : (a.date < b.date) ? -1 : 0;
+    if (filterSort === "highest") return b.amount - a.amount;
+    if (filterSort === "lowest") return a.amount - b.amount;
+    return 0;
+  });
+
+  updateFilterSummary(items.length);
 
   if (items.length === 0) {
-    txList.innerHTML = '<li class="tx-empty">No transactions yet.</li>';
+    txList.innerHTML = '<li class="tx-empty">No transactions match your filters.</li>';
     return;
   }
 
@@ -311,91 +370,131 @@ function renderList() {
 
 /* ── Add Transaction ────────────────────────────────────── */
 
-txForm.addEventListener("submit", async function (e) {
-  e.preventDefault();
-  var payload = {
-    date: document.getElementById("date").value,
-    type: document.getElementById("type").value,
-    category: document.getElementById("category").value,
-    amount: parseFloat(document.getElementById("amount").value),
-    note: document.getElementById("note").value.trim(),
-  };
-  if (!payload.date || !payload.category || isNaN(payload.amount)) {
-    showMessage(formMessage, "Please fill all required fields.", "error"); return;
-  }
-  submitBtn.disabled = true;
-  submitBtn.querySelector(".btn-text").textContent = "Saving…";
-  try {
-    var res = await authFetch(API + "/transactions", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
-    });
-    var data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Server error");
-    showMessage(formMessage, "Transaction added ✓", "success");
-    txForm.reset(); setDefaultDate(); setType("income");
-    await refresh();
-  } catch (err) {
-    showMessage(formMessage, err.message, "error");
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.querySelector(".btn-text").textContent = "Add Transaction";
-  }
-});
+if (txForm) {
+  txForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var payload = {
+      date: document.getElementById("date").value,
+      type: document.getElementById("type").value,
+      category: document.getElementById("category").value,
+      amount: parseFloat(document.getElementById("amount").value),
+      note: document.getElementById("note").value.trim(),
+    };
+    if (!payload.date || !payload.category || isNaN(payload.amount)) {
+      showMessage(formMessage, "Please fill all required fields.", "error"); 
+      return;
+    }
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      var btnText = submitBtn.querySelector(".btn-text");
+      if (btnText) btnText.textContent = "Saving…";
+    }
+    try {
+      var res = await authFetch(API + "/transactions", {
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify(payload)
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Server error");
+      showMessage(formMessage, "Transaction added ✓", "success");
+      txForm.reset(); 
+      setDefaultDate(); 
+      setType("income");
+      await refresh();
+    } catch (err) {
+      showMessage(formMessage, err.message, "error");
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        var btnText = submitBtn.querySelector(".btn-text");
+        if (btnText) btnText.textContent = "Add Transaction";
+      }
+    }
+  });
+}
 
 /* ── Edit Transaction ───────────────────────────────────── */
 
 function openEditModal(id) {
   var t = allTransactions.find(function (tx) { return tx.id === id; });
   if (!t) return;
-  document.getElementById("editId").value = t.id;
-  document.getElementById("editDate").value = t.date;
-  document.getElementById("editCategory").value = t.category;
-  document.getElementById("editAmount").value = t.amount;
-  document.getElementById("editNote").value = t.note || "";
+  
+  var editId = document.getElementById("editId");
+  var editDate = document.getElementById("editDate");
+  var editCategory = document.getElementById("editCategory");
+  var editAmount = document.getElementById("editAmount");
+  var editNote = document.getElementById("editNote");
+  
+  if (editId) editId.value = t.id;
+  if (editDate) editDate.value = t.date;
+  if (editCategory) editCategory.value = t.category;
+  if (editAmount) editAmount.value = t.amount;
+  if (editNote) editNote.value = t.note || "";
+  
   setEditType(t.type);
-  editOverlay.classList.add("open");
+  if (editOverlay) editOverlay.classList.add("open");
 }
 
 function closeEditModal() {
-  editOverlay.classList.remove("open");
-  editForm.reset();
-  editMessage.textContent = "";
+  if (editOverlay) editOverlay.classList.remove("open");
+  if (editForm) editForm.reset();
+  if (editMessage) editMessage.textContent = "";
 }
 
-document.getElementById("modalClose").addEventListener("click", closeEditModal);
-document.getElementById("modalCancel").addEventListener("click", closeEditModal);
-editOverlay.addEventListener("click", function (e) { if (e.target === editOverlay) closeEditModal(); });
+var modalClose = document.getElementById("modalClose");
+if (modalClose) modalClose.addEventListener("click", closeEditModal);
 
-editForm.addEventListener("submit", async function (e) {
-  e.preventDefault();
-  var id = parseInt(document.getElementById("editId").value);
-  var payload = {
-    date: document.getElementById("editDate").value,
-    type: document.getElementById("editType").value,
-    category: document.getElementById("editCategory").value,
-    amount: parseFloat(document.getElementById("editAmount").value),
-    note: document.getElementById("editNote").value.trim(),
-  };
-  if (!payload.date || !payload.category || isNaN(payload.amount)) {
-    showMessage(editMessage, "Please fill all required fields.", "error"); return;
-  }
-  editSubmitBtn.disabled = true;
-  editSubmitBtn.querySelector(".btn-text").textContent = "Saving…";
-  try {
-    var res = await authFetch(API + "/transactions/" + id, {
-      method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
-    });
-    var data = await res.json();
-    if (!res.ok) throw new Error(data.error || "Server error");
-    closeEditModal();
-    await refresh();
-  } catch (err) {
-    showMessage(editMessage, err.message, "error");
-  } finally {
-    editSubmitBtn.disabled = false;
-    editSubmitBtn.querySelector(".btn-text").textContent = "Save Changes";
-  }
-});
+var modalCancel = document.getElementById("modalCancel");
+if (modalCancel) modalCancel.addEventListener("click", closeEditModal);
+
+if (editOverlay) {
+  editOverlay.addEventListener("click", function (e) { 
+    if (e.target === editOverlay) closeEditModal(); 
+  });
+}
+
+if (editForm) {
+  editForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var id = parseInt(document.getElementById("editId").value);
+    var payload = {
+      date: document.getElementById("editDate").value,
+      type: document.getElementById("editType").value,
+      category: document.getElementById("editCategory").value,
+      amount: parseFloat(document.getElementById("editAmount").value),
+      note: document.getElementById("editNote").value.trim(),
+    };
+    if (!payload.date || !payload.category || isNaN(payload.amount)) {
+      showMessage(editMessage, "Please fill all required fields.", "error"); 
+      return;
+    }
+    if (editSubmitBtn) {
+      editSubmitBtn.disabled = true;
+      var btnText = editSubmitBtn.querySelector(".btn-text");
+      if (btnText) btnText.textContent = "Saving…";
+    }
+    try {
+      var res = await authFetch(API + "/transactions/" + id, {
+        method: "PUT", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify(payload)
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Server error");
+      closeEditModal();
+      await refresh();
+    } catch (err) {
+      showMessage(editMessage, err.message, "error");
+    } finally {
+      if (editSubmitBtn) {
+        editSubmitBtn.disabled = false;
+        var btnText = editSubmitBtn.querySelector(".btn-text");
+        if (btnText) btnText.textContent = "Save Changes";
+      }
+    }
+  });
+}
 
 /* ── Delete Transaction ─────────────────────────────────── */
 
@@ -413,14 +512,16 @@ async function confirmDelete(id) {
 /* ── Type Toggles ───────────────────────────────────────── */
 
 function setType(value) {
-  document.getElementById("type").value = value;
+  var typeInput = document.getElementById("type");
+  if (typeInput) typeInput.value = value;
   document.querySelectorAll(".toggle[data-value]").forEach(function (btn) {
     btn.classList.toggle("active", btn.dataset.value === value);
   });
 }
 
 function setEditType(value) {
-  document.getElementById("editType").value = value;
+  var editTypeInput = document.getElementById("editType");
+  if (editTypeInput) editTypeInput.value = value;
   document.querySelectorAll(".toggle[data-edit-value]").forEach(function (btn) {
     btn.classList.toggle("active", btn.dataset.editValue === value);
   });
@@ -433,35 +534,141 @@ document.querySelectorAll(".toggle[data-edit-value]").forEach(function (btn) {
   btn.addEventListener("click", function () { setEditType(btn.dataset.editValue); });
 });
 
-/* ── Filter Buttons ─────────────────────────────────────── */
+/* ── Filter & Sort Controls ─────────────────────────────── */
 
+// Toggle filter bar visibility
+var btnFilterToggle = document.getElementById("btnFilterToggle");
+if (btnFilterToggle) {
+  btnFilterToggle.addEventListener("click", function () {
+    var bar = document.getElementById("filterBar");
+    if (bar) bar.classList.toggle("open");
+    this.classList.toggle("active");
+  });
+}
+
+// Type pills
 document.querySelectorAll(".filter").forEach(function (btn) {
   btn.addEventListener("click", function () {
-    activeFilter = btn.dataset.filter;
+    filterType = btn.dataset.filter;
     document.querySelectorAll(".filter").forEach(function (b) { b.classList.remove("active"); });
     btn.classList.add("active");
     renderList();
   });
 });
 
+// Sort pills
+document.querySelectorAll(".sort-btn").forEach(function (btn) {
+  btn.addEventListener("click", function () {
+    filterSort = btn.dataset.sort;
+    document.querySelectorAll(".sort-btn").forEach(function (b) { b.classList.remove("active"); });
+    btn.classList.add("active");
+    renderList();
+  });
+});
+
+// Category dropdown — re-fetch from server with category param for accuracy
+var filterCategoryEl = document.getElementById("filterCategory");
+if (filterCategoryEl) {
+  filterCategoryEl.addEventListener("change", function () {
+    filterCategory = this.value;
+    fetchTransactions();
+  });
+}
+
+// Date range — re-fetch from server with date params
+var filterFromEl = document.getElementById("filterFrom");
+if (filterFromEl) {
+  filterFromEl.addEventListener("change", function () {
+    filterFrom = this.value;
+    fetchTransactions();
+  });
+}
+
+var filterToEl = document.getElementById("filterTo");
+if (filterToEl) {
+  filterToEl.addEventListener("change", function () {
+    filterTo = this.value;
+    fetchTransactions();
+  });
+}
+
+// Reset all filters
+var btnFilterReset = document.getElementById("btnFilterReset");
+if (btnFilterReset) {
+  btnFilterReset.addEventListener("click", function () {
+    filterType = "all";
+    filterSort = "latest";
+    filterCategory = "";
+    filterFrom = "";
+    filterTo = "";
+    if (filterCategoryEl) filterCategoryEl.value = "";
+    if (filterFromEl) filterFromEl.value = "";
+    if (filterToEl) filterToEl.value = "";
+    document.querySelectorAll(".filter").forEach(function (b) {
+      b.classList.toggle("active", b.dataset.filter === "all");
+    });
+    document.querySelectorAll(".sort-btn").forEach(function (b) {
+      b.classList.toggle("active", b.dataset.sort === "latest");
+    });
+    fetchTransactions();
+  });
+}
+
+// Helper: build summary line above the list
+function updateFilterSummary(count) {
+  var el = document.getElementById("filterSummary");
+  if (!el) return;
+  
+  var parts = [];
+  if (filterType !== "all") parts.push(filterType);
+  if (filterCategory) parts.push(filterCategory);
+  if (filterFrom || filterTo) {
+    var range = (filterFrom || "…") + " → " + (filterTo || "…");
+    parts.push(range);
+  }
+  if (filterSort !== "latest") parts.push("sort: " + filterSort);
+
+  if (parts.length === 0) {
+    el.innerHTML = "";
+  } else {
+    el.innerHTML = "Showing <span>" + count + "</span> result" + (count !== 1 ? "s" : "") +
+      " — " + parts.map(function (p) { return "<span>" + escHtml(p) + "</span>"; }).join(", ");
+  }
+}
+
 /* ── Refresh ────────────────────────────────────────────── */
 
+// DEFINE REFRESH FUNCTION HERE
 async function refresh() {
-  await Promise.all([fetchTransactions(), fetchSummary(), fetchBudget()]);
+  console.log("Refreshing data...");
+  try {
+    await Promise.all([fetchTransactions(), fetchSummary(), fetchBudget()]);
+    console.log("Data refresh complete");
+  } catch (error) {
+    console.error("Error refreshing data:", error);
+  }
 }
 
 /* ── Init ───────────────────────────────────────────────── */
 
 function init() {
+  console.log("Initializing dashboard...");
+  console.log("Current token:", localStorage.getItem("token") ? "Present" : "Missing");
+  
+  // Cek token lagi
+  if (!isTokenValid(localStorage.getItem("token"))) {
+    console.log("Token invalid in init, redirecting");
+    window.location.href = APPROOT + "/login";
+    return;
+  }
+  
   renderHeaderDate();
   setDefaultDate();
 
-  // Show logged-in username in header
   var username = localStorage.getItem("username") || "";
   var headerEl = document.getElementById("headerUsername");
   if (headerEl) headerEl.textContent = username ? "◈ " + username : "";
 
-  // Logout button
   var logoutBtn = document.getElementById("logoutBtn");
   if (logoutBtn) {
     logoutBtn.addEventListener("click", function () {
@@ -472,7 +679,16 @@ function init() {
     });
   }
 
+  // Load data
   refresh();
 }
 
-init();
+// Hanya jalankan init jika di halaman dashboard (bukan login/register)
+if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/register')) {
+  // Tambahkan delay kecil untuk memastikan semua DOM siap
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+}

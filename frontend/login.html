@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Ledger — Sign In</title>
+  <title>Money Tracker — Sign In</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link
     href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap"
@@ -24,7 +24,7 @@
     <div class="auth-card">
       <div class="auth-logo">
         <span class="auth-logo-icon">◈</span>
-        <span class="auth-logo-text">Ledger</span>
+        <span class="auth-logo-text">Money Tracker</span>
       </div>
       <h1 class="auth-title">Welcome back</h1>
       <p class="auth-sub">Sign in to your account to continue tracking.</p>
@@ -57,14 +57,21 @@
     const API = "http://127.0.0.1:5000/api";
     const APPROOT = "http://127.0.0.1:5000";
 
-    // Already logged in → go to dashboard
+    // Cek apakah sudah login - jika ya, langsung redirect ke dashboard
     (function () {
       var token = localStorage.getItem("token");
-      if (!token) return;
-      try {
-        var p = JSON.parse(atob(token.split(".")[1] + "=="));
-        if (p.exp > Date.now() / 1000) window.location.href = APPROOT + "/";
-      } catch (e) { localStorage.clear(); }
+      if (token) {
+        try {
+          var p = JSON.parse(atob(token.split(".")[1] + "=="));
+          if (p.exp > Date.now() / 1000) {
+            console.log("Already logged in, redirecting to dashboard");
+            window.location.href = APPROOT + "/";
+            return;
+          }
+        } catch (e) { 
+          localStorage.clear(); 
+        }
+      }
     })();
 
     var pwInput = document.getElementById("password");
@@ -73,7 +80,6 @@
       document.getElementById("eyeIcon").textContent = pwInput.type === "password" ? "👁" : "🙈";
     });
 
-    // Ganti bagian login form submit menjadi:
     document.getElementById("loginForm").addEventListener("submit", async function (e) {
       e.preventDefault();
       var username = document.getElementById("username").value.trim();
@@ -81,46 +87,54 @@
       var msg = document.getElementById("authMessage");
       var btn = document.getElementById("loginBtn");
 
-      if (!username || !password) { showMsg("Please enter username and password.", "error"); return; }
+      if (!username || !password) { 
+        showMsg("Please enter username and password.", "error"); 
+        return; 
+      }
 
       btn.disabled = true;
       document.querySelector(".auth-btn-text").textContent = "Signing in…";
+      
       try {
         var res = await fetch(API + "/auth/login", {
-          method: "POST", headers: { "Content-Type": "application/json" },
+          method: "POST", 
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username: username, password: password })
         });
+        
         var data = await res.json();
+        
         if (!res.ok) throw new Error(data.error || "Login failed");
 
-        console.log("DEBUG - Response data:", data);
-        console.log("DEBUG - Token from server:", data.token);
-
-        if (!data.token) {
-          throw new Error("No token received from server");
-        }
-
-        // Simpan ke localStorage
+        console.log("Login successful, saving token...");
+        
+        // Hapus semua data lama terlebih dahulu
+        localStorage.clear();
+        
+        // Simpan token dan username
         localStorage.setItem("token", data.token);
         localStorage.setItem("username", data.username);
-
-        console.log("DEBUG - Token after save:", localStorage.getItem("token"));
-        console.log("DEBUG - Username after save:", localStorage.getItem("username"));
-
-        // 🔥 SET COOKIE juga
+        
+        // Verifikasi token tersimpan
+        var savedToken = localStorage.getItem("token");
+        console.log("Token saved:", savedToken ? "Yes" : "No");
+        console.log("Token length:", savedToken ? savedToken.length : 0);
+        
+        // Set cookie juga untuk backup
         document.cookie = "token=" + data.token + "; path=/; max-age=" + (60 * 60 * 24 * 7);
-
-        console.log("DEBUG - About to redirect to:", APPROOT + "/");
-
-        // Gunakan timeout untuk memastikan localStorage tersimpan
-        setTimeout(function () {
+        
+        // Tampilkan pesan sukses
+        showMsg("Login successful! Redirecting...", "success");
+        
+        // Delay redirect untuk memastikan localStorage tersimpan
+        setTimeout(function() {
+          console.log("Redirecting to dashboard...");
           window.location.href = APPROOT + "/";
-        }, 100);
-
+        }, 500);
+        
       } catch (err) {
-        console.error("DEBUG - Error:", err);
+        console.error("Login error:", err);
         showMsg(err.message, "error");
-      } finally {
         btn.disabled = false;
         document.querySelector(".auth-btn-text").textContent = "Sign In";
       }
@@ -128,7 +142,14 @@
 
     function showMsg(text, type) {
       var el = document.getElementById("authMessage");
-      el.textContent = text; el.className = "auth-message " + type;
+      el.textContent = text; 
+      el.className = "auth-message " + type;
+      if (type === "success") {
+        setTimeout(function() {
+          el.textContent = "";
+          el.className = "auth-message";
+        }, 3000);
+      }
     }
   </script>
 </body>
