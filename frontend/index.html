@@ -20,7 +20,7 @@
     <div class="header-inner">
       <div class="logo">
         <span class="logo-icon">◈</span>
-        <span class="logo-text">Ledger</span>
+        <span class="logo-text">Money Tracker</span>
       </div>
       <div class="header-right">
         <p class="header-date" id="headerDate"></p>
@@ -189,6 +189,36 @@
       </div>
       <div class="drawer-body" id="drawerBody">
         <!-- Rendered by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ── History Drawer ───────────────────────────────── -->
+  <div class="drawer-overlay" id="historyOverlay">
+    <div class="drawer" id="historyDrawer">
+      <div class="drawer-header">
+        <h3 class="drawer-title">Summary History</h3>
+        <button class="modal-close" id="historyClose">&#x2715;</button>
+      </div>
+ 
+      <!-- Tabs -->
+      <div class="history-tabs">
+        <button class="history-tab active" data-tab="daily">Daily</button>
+        <button class="history-tab" data-tab="monthly">Monthly</button>
+      </div>
+ 
+      <!-- Daily tab -->
+      <div class="history-pane" id="historyDaily">
+        <div class="drawer-body" id="dailyBody">
+          <div class="tx-empty">Loading...</div>
+        </div>
+      </div>
+ 
+      <!-- Monthly tab -->
+      <div class="history-pane" id="historyMonthly" style="display:none">
+        <div class="drawer-body" id="monthlyBody">
+          <div class="tx-empty">Loading...</div>
+        </div>
       </div>
     </div>
   </div>

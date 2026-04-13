@@ -31,26 +31,26 @@ const expenseCategories = ["Food", "Transport", "Housing", "Health", "Entertainm
 function updateCategoryOptions(type) {
   var categorySelect = document.getElementById("category");
   if (!categorySelect) return;
-  
+
   var previousValue = categorySelect.value;
   categorySelect.innerHTML = '';
-  
+
   var defaultOption = document.createElement('option');
   defaultOption.value = '';
   defaultOption.disabled = true;
   defaultOption.selected = true;
   defaultOption.textContent = 'Select…';
   categorySelect.appendChild(defaultOption);
-  
+
   var categories = type === 'income' ? incomeCategories : expenseCategories;
-  
-  categories.forEach(function(cat) {
+
+  categories.forEach(function (cat) {
     var option = document.createElement('option');
     option.value = cat;
     option.textContent = cat;
     categorySelect.appendChild(option);
   });
-  
+
   if (previousValue && categories.includes(previousValue)) {
     categorySelect.value = previousValue;
   }
@@ -59,19 +59,19 @@ function updateCategoryOptions(type) {
 function updateEditCategoryOptions(type) {
   var editCategorySelect = document.getElementById("editCategory");
   if (!editCategorySelect) return;
-  
+
   var previousValue = editCategorySelect.value;
   editCategorySelect.innerHTML = '';
-  
+
   var categories = type === 'income' ? incomeCategories : expenseCategories;
-  
-  categories.forEach(function(cat) {
+
+  categories.forEach(function (cat) {
     var option = document.createElement('option');
     option.value = cat;
     option.textContent = cat;
     editCategorySelect.appendChild(option);
   });
-  
+
   if (previousValue && categories.includes(previousValue)) {
     editCategorySelect.value = previousValue;
   }
@@ -121,6 +121,11 @@ var editForm = document.getElementById("editForm");
 var editMessage = document.getElementById("editMessage");
 var editSubmitBtn = document.getElementById("editSubmitBtn");
 
+/* ── History Drawer Elements ────────────────────────────── */
+var historyOverlay = document.getElementById("historyOverlay");
+var historyClose = document.getElementById("historyClose");
+var activeHistoryTab = "daily";
+
 /* ── Helpers ────────────────────────────────────────────── */
 function formatRp(n) {
   return new Intl.NumberFormat("id-ID", {
@@ -138,10 +143,10 @@ function showMessage(el, text, type) {
   if (!el) return;
   el.textContent = text;
   el.className = "form-message " + type;
-  setTimeout(function () { 
+  setTimeout(function () {
     if (el) {
-      el.textContent = ""; 
-      el.className = "form-message"; 
+      el.textContent = "";
+      el.className = "form-message";
     }
   }, 3000);
 }
@@ -186,7 +191,7 @@ async function fetchBudget() {
   try {
     var data = await authFetch(API + "/salary-summary").then(function (r) { return r.json(); });
     if (budgetWrapper) renderBudget(data);
-  } catch (e) { 
+  } catch (e) {
     console.error("Fetch budget error:", e);
   }
 }
@@ -301,7 +306,7 @@ if (txForm) {
       note: document.getElementById("note").value.trim(),
     };
     if (!payload.date || !payload.category || isNaN(payload.amount)) {
-      showMessage(formMessage, "Please fill all required fields.", "error"); 
+      showMessage(formMessage, "Please fill all required fields.", "error");
       return;
     }
     if (submitBtn) {
@@ -311,15 +316,15 @@ if (txForm) {
     }
     try {
       var res = await authFetch(API + "/transactions", {
-        method: "POST", 
-        headers: { "Content-Type": "application/json" }, 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
       var data = await res.json();
       if (!res.ok) throw new Error(data.error || "Server error");
       showMessage(formMessage, "Transaction added ✓", "success");
-      txForm.reset(); 
-      setDefaultDate(); 
+      txForm.reset();
+      setDefaultDate();
       setType("income");
       await refresh();
     } catch (err) {
@@ -343,7 +348,6 @@ function openEditModal(id) {
   document.getElementById("editAmount").value = t.amount;
   document.getElementById("editNote").value = t.note || "";
   setEditType(t.type);
-  // Set category setelah type di-set
   var editCategorySelect = document.getElementById("editCategory");
   if (editCategorySelect) editCategorySelect.value = t.category;
   if (editOverlay) editOverlay.classList.add("open");
@@ -373,7 +377,7 @@ if (editForm) {
       note: document.getElementById("editNote").value.trim(),
     };
     if (!payload.date || !payload.category || isNaN(payload.amount)) {
-      showMessage(editMessage, "Please fill all required fields.", "error"); 
+      showMessage(editMessage, "Please fill all required fields.", "error");
       return;
     }
     if (editSubmitBtn) {
@@ -383,8 +387,8 @@ if (editForm) {
     }
     try {
       var res = await authFetch(API + "/transactions/" + id, {
-        method: "PUT", 
-        headers: { "Content-Type": "application/json" }, 
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
       var data = await res.json();
@@ -504,6 +508,125 @@ function updateFilterSummary(count) {
   }
 }
 
+/* ── History Summary Functions ──────────────────────────── */
+
+// Open history drawer and load data
+function openHistoryDrawer() {
+  if (historyOverlay) {
+    historyOverlay.classList.add("open");
+    loadHistory(activeHistoryTab);
+  }
+}
+
+// Close history drawer
+function closeHistoryDrawer() {
+  if (historyOverlay) historyOverlay.classList.remove("open");
+}
+
+// Tab switching
+document.querySelectorAll(".history-tab").forEach(function(tab) {
+  tab.addEventListener("click", function() {
+    activeHistoryTab = tab.dataset.tab;
+    document.querySelectorAll(".history-tab").forEach(function(t) { t.classList.remove("active"); });
+    tab.classList.add("active");
+    
+    var dailyPane = document.getElementById("historyDaily");
+    var monthlyPane = document.getElementById("historyMonthly");
+    
+    if (dailyPane) dailyPane.style.display = activeHistoryTab === "daily" ? "block" : "none";
+    if (monthlyPane) monthlyPane.style.display = activeHistoryTab === "monthly" ? "block" : "none";
+    
+    loadHistory(activeHistoryTab);
+  });
+});
+
+// Load history based on tab
+async function loadHistory(tab) {
+  if (tab === "daily") await loadDailySummary();
+  if (tab === "monthly") await loadMonthlySummary();
+}
+
+// Load daily summary
+async function loadDailySummary() {
+  var body = document.getElementById("dailyBody");
+  if (!body) return;
+  body.innerHTML = '<div class="tx-empty">Loading…</div>';
+  try {
+    var rows = await authFetch(API + "/summary/daily").then(function(r) { return r.json(); });
+    if (!rows.length) { 
+      body.innerHTML = '<div class="tx-empty">No transactions yet.</div>'; 
+      return; 
+    }
+    body.innerHTML = rows.map(function(row, i) {
+      var date = new Date(row.date + "T00:00:00");
+      var label = date.toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" });
+      var income = row.total_income || 0;
+      var expense = row.total_expense || 0;
+      var balance = row.balance || 0;
+      var balClass = balance >= 0 ? "pos" : "neg";
+      return '<div class="summary-row" style="animation-delay:' + (i * 0.03) + 's">' +
+        '<div class="summary-row-date">' + escHtml(label) + '<span>' + date.getFullYear() + '</span></div>' +
+        '<div class="summary-row-val income">' + (income > 0 ? "+" + formatRpShort(income) : "—") + '</div>' +
+        '<div class="summary-row-val expense">' + (expense > 0 ? "−" + formatRpShort(expense) : "—") + '</div>' +
+        '<div class="summary-row-val balance ' + balClass + '">' + formatRpShort(balance) + '</div>' +
+        '</div>';
+    }).join("");
+  } catch(e) {
+    console.error("Load daily summary error:", e);
+    body.innerHTML = '<div class="tx-empty">Could not load daily summary.</div>';
+  }
+}
+
+// Load monthly summary
+async function loadMonthlySummary() {
+  var body = document.getElementById("monthlyBody");
+  if (!body) return;
+  body.innerHTML = '<div class="tx-empty">Loading…</div>';
+  try {
+    var rows = await authFetch(API + "/summary/monthly").then(function(r) { return r.json(); });
+    if (!rows.length) { 
+      body.innerHTML = '<div class="tx-empty">No transactions yet.</div>'; 
+      return; 
+    }
+    body.innerHTML = rows.map(function(row, i) {
+      var parts = row.month.split("-");
+      var date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1);
+      var label = date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+      var income = row.total_income || 0;
+      var expense = row.total_expense || 0;
+      var balance = row.balance || 0;
+      var balClass = balance >= 0 ? "pos" : "neg";
+      return '<div class="summary-row" style="animation-delay:' + (i * 0.03) + 's">' +
+        '<div class="summary-row-date">' + escHtml(label) + '<span>Monthly</span></div>' +
+        '<div class="summary-row-val income">' + (income > 0 ? "+" + formatRpShort(income) : "—") + '</div>' +
+        '<div class="summary-row-val expense">' + (expense > 0 ? "−" + formatRpShort(expense) : "—") + '</div>' +
+        '<div class="summary-row-val balance ' + balClass + '">' + formatRpShort(balance) + '</div>' +
+        '</div>';
+    }).join("");
+  } catch(e) {
+    console.error("Load monthly summary error:", e);
+    body.innerHTML = '<div class="tx-empty">Could not load monthly summary.</div>';
+  }
+}
+
+// Add a button to open history drawer (you can add this button anywhere in your HTML)
+// For now, we'll add it dynamically or you can add it manually in HTML
+function addHistoryButton() {
+  if (!document.getElementById("historyButton")) {
+    var btn = document.createElement("button");
+    btn.id = "historyButton";
+    btn.innerHTML = "📊 History";
+    btn.className = "btn-history-open";
+    btn.style.cssText = "position: fixed; bottom: 2rem; right: 2rem; background: #6366f1; border: none; border-radius: 3rem; padding: 0.75rem 1.5rem; color: white; font-weight: 500; cursor: pointer; z-index: 100; font-family: inherit; box-shadow: 0 4px 12px rgba(0,0,0,0.15);";
+    btn.addEventListener("click", openHistoryDrawer);
+    document.body.appendChild(btn);
+  }
+}
+
+// Event listeners for history drawer
+if (historyClose) historyClose.addEventListener("click", closeHistoryDrawer);
+if (historyOverlay) historyOverlay.addEventListener("click", function(e) { if (e.target === historyOverlay) closeHistoryDrawer(); });
+
 /* ── Refresh ────────────────────────────────────────────── */
 async function refresh() {
   console.log("Refreshing data...");
@@ -529,7 +652,7 @@ function init() {
   var logoutBtn = document.getElementById("logoutBtn");
   if (logoutBtn) {
     logoutBtn.addEventListener("click", function () {
-      if (confirm("Sign out of Ledger?")) {
+      if (confirm("Sign out of Money Tracker?")) {
         localStorage.clear();
         window.location.href = APPROOT + "/login";
       }
@@ -538,6 +661,10 @@ function init() {
   // Inisialisasi dropdown category dengan default income
   updateCategoryOptions('income');
   updateEditCategoryOptions('income');
+  
+  // Add history button if not exists
+  addHistoryButton();
+  
   refresh();
 }
 

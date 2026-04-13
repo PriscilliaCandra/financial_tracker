@@ -1370,3 +1370,150 @@ select option {
 .filter-summary span {
   color: var(--accent);
 }
+
+/* ── History Button (header) ────────────────────────────── */
+.btn-history-open {
+  padding: .25rem .65rem;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: .65rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .15s;
+}
+
+.btn-history-open:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── History Drawer tabs ─────────────────────────────────── */
+.history-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.history-tab {
+  flex: 1;
+  padding: .7rem 1rem;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: .75rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .18s;
+  margin-bottom: -1px;
+}
+
+.history-tab:hover {
+  color: var(--text);
+}
+
+.history-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* ── History pane rows ───────────────────────────────────── */
+.history-pane {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.summary-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  align-items: center;
+  gap: .5rem;
+  padding: .75rem 1rem;
+  border-radius: 7px;
+  background: var(--surface2);
+  border: 1px solid transparent;
+  transition: border-color .15s;
+  animation: fadeUp .25s ease both;
+}
+
+.summary-row:hover {
+  border-color: var(--border);
+}
+
+.summary-row-date {
+  font-family: var(--font-mono);
+  font-size: .8rem;
+  color: var(--text);
+  letter-spacing: .02em;
+}
+
+.summary-row-date span {
+  display: block;
+  font-size: .65rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+
+.summary-row-val {
+  font-family: var(--font-mono);
+  font-size: .8rem;
+  font-weight: 500;
+  text-align: right;
+}
+
+.summary-row-val.income {
+  color: var(--income);
+}
+
+.summary-row-val.expense {
+  color: var(--expense);
+}
+
+.summary-row-val.balance.pos {
+  color: var(--accent);
+}
+
+.summary-row-val.balance.neg {
+  color: var(--expense);
+}
+
+.summary-row-label {
+  font-family: var(--font-mono);
+  font-size: .6rem;
+  color: var(--muted);
+  text-align: right;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+/* Header row for the table */
+.summary-row-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: .5rem;
+  padding: .4rem 1rem .3rem;
+  margin-bottom: .2rem;
+}
+
+.summary-row-header span {
+  font-family: var(--font-mono);
+  font-size: .6rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  text-align: right;
+}
+
+.summary-row-header span:first-child {
+  text-align: left;
+}

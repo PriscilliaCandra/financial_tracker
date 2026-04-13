@@ -215,3 +215,87 @@ def salary_summary():
         resp["current_cycle"] = {k: current[k] for k in
             ("label", "start", "end", "total_income", "total_expense", "balance", "status")}
     return jsonify(resp), 200
+
+
+# ── GET /api/summary/daily ────────────────────────────────────────────────────
+@transactions_bp.route("/summary/daily", methods=["GET"])
+@require_auth
+def daily_summary():
+    """
+    Returns income, expense, balance grouped by day.
+    Optional: ?from=YYYY-MM-DD  ?to=YYYY-MM-DD
+    """
+    conn   = get_db()
+    query  = """
+        SELECT
+            date,
+            COALESCE(SUM(CASE WHEN type='income'  THEN amount ELSE 0 END), 0) AS total_income,
+            COALESCE(SUM(CASE WHEN type='expense' THEN amount ELSE 0 END), 0) AS total_expense
+        FROM transactions
+        WHERE user_id = ?
+    """
+    params = [g.user_id]
+ 
+    if from_date := request.args.get("from"):
+        query += " AND date >= ?"; params.append(from_date)
+    if to_date := request.args.get("to"):
+        query += " AND date <= ?"; params.append(to_date)
+ 
+    query += " GROUP BY date ORDER BY date DESC"
+    rows   = conn.execute(query, params).fetchall()
+    conn.close()
+ 
+    result = []
+    for row in rows:
+        income  = row["total_income"]
+        expense = row["total_expense"]
+        result.append({
+            "date":          row["date"],
+            "total_income":  round(income, 2),
+            "total_expense": round(expense, 2),
+            "balance":       round(income - expense, 2),
+        })
+ 
+    return jsonify(result), 200
+ 
+ 
+# ── GET /api/summary/monthly ──────────────────────────────────────────────────
+@transactions_bp.route("/summary/monthly", methods=["GET"])
+@require_auth
+def monthly_summary():
+    """
+    Returns income, expense, balance grouped by month (YYYY-MM).
+    Optional: ?from=YYYY-MM-DD  ?to=YYYY-MM-DD
+    """
+    conn   = get_db()
+    query  = """
+        SELECT
+            strftime('%Y-%m', date) AS month,
+            COALESCE(SUM(CASE WHEN type='income'  THEN amount ELSE 0 END), 0) AS total_income,
+            COALESCE(SUM(CASE WHEN type='expense' THEN amount ELSE 0 END), 0) AS total_expense
+        FROM transactions
+        WHERE user_id = ?
+    """
+    params = [g.user_id]
+ 
+    if from_date := request.args.get("from"):
+        query += " AND date >= ?"; params.append(from_date)
+    if to_date := request.args.get("to"):
+        query += " AND date <= ?"; params.append(to_date)
+ 
+    query += " GROUP BY month ORDER BY month DESC"
+    rows   = conn.execute(query, params).fetchall()
+    conn.close()
+ 
+    result = []
+    for row in rows:
+        income  = row["total_income"]
+        expense = row["total_expense"]
+        result.append({
+            "month":         row["month"],
+            "total_income":  round(income, 2),
+            "total_expense": round(expense, 2),
+            "balance":       round(income - expense, 2),
+        })
+ 
+    return jsonify(result), 200
