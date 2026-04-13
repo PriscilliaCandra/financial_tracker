@@ -3,13 +3,14 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <title>Money Tracker — Create Account</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link
     href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap"
     rel="stylesheet" />
   <link rel="stylesheet" href="auth.css" />
+  <script src="config.js"></script>
 </head>
 
 <body>
@@ -62,13 +63,23 @@
         </button>
       </form>
 
-      <p class="auth-switch">Already have an account? <a href="http://127.0.0.1:5000/login">Sign in</a></p>
+      <p class="auth-switch">Already have an account? <a href="#" id="loginLink">Sign in</a></p>
     </div>
   </main>
 
   <script>
-    const API = "http://127.0.0.1:5000/api";
-    const APPROOT = "http://127.0.0.1:5000";
+    const API = window.API || "http://127.0.0.1:5000/api";
+    const APPROOT = window.APPROOT || "http://127.0.0.1:5000";
+
+    console.log("Register page - API:", API);
+    console.log("Register page - APPROOT:", APPROOT);
+
+    // Fix: Gunakan APPROOT untuk link login
+    const loginLink = document.getElementById("loginLink");
+    if (loginLink) {
+      loginLink.href = APPROOT + "/login";
+      console.log("Login link set to:", loginLink.href);
+    }
 
     // Already logged in → go to dashboard
     (function () {
@@ -76,39 +87,55 @@
       if (!token) return;
       try {
         var p = JSON.parse(atob(token.split(".")[1] + "=="));
-        if (p.exp > Date.now() / 1000) window.location.href = APPROOT + "/";
-      } catch (e) { localStorage.clear(); }
+        if (p.exp > Date.now() / 1000) {
+          console.log("Already logged in, redirecting to dashboard");
+          window.location.href = APPROOT + "/";
+        }
+      } catch (e) { 
+        console.log("Invalid token, clearing");
+        localStorage.clear(); 
+      }
     })();
 
     var pwInput = document.getElementById("password");
-    document.getElementById("eyeBtn").addEventListener("click", function () {
-      pwInput.type = pwInput.type === "password" ? "text" : "password";
-      document.getElementById("eyeIcon").textContent = pwInput.type === "password" ? "👁" : "🙈";
-    });
+    var eyeBtn = document.getElementById("eyeBtn");
+    if (eyeBtn) {
+      eyeBtn.addEventListener("click", function () {
+        pwInput.type = pwInput.type === "password" ? "text" : "password";
+        document.getElementById("eyeIcon").textContent = pwInput.type === "password" ? "👁" : "🙈";
+      });
+    }
 
     // Password strength meter
-    pwInput.addEventListener("input", function () {
-      var pw = pwInput.value;
-      var wrap = document.getElementById("strengthWrap");
-      if (!pw) { wrap.style.display = "none"; return; }
-      wrap.style.display = "flex";
-      var score = 0;
-      if (pw.length >= 6) score++;
-      if (pw.length >= 10) score++;
-      if (/[A-Z]/.test(pw)) score++;
-      if (/[0-9]/.test(pw)) score++;
-      if (/[^A-Za-z0-9]/.test(pw)) score++;
-      var labels = ["", "Weak", "Fair", "Good", "Strong", "Very strong"];
-      var colors = ["", "#f87171", "#fbbf24", "#fbbf24", "#4ade80", "#4ade80"];
-      var fill = document.getElementById("strengthFill");
-      var label = document.getElementById("strengthLabel");
-      fill.style.width = (score / 5 * 100) + "%";
-      fill.style.background = colors[score];
-      label.textContent = labels[score];
-      label.style.color = colors[score];
-    });
+    if (pwInput) {
+      pwInput.addEventListener("input", function () {
+        var pw = pwInput.value;
+        var wrap = document.getElementById("strengthWrap");
+        if (!pw) { 
+          if (wrap) wrap.style.display = "none"; 
+          return; 
+        }
+        if (wrap) wrap.style.display = "flex";
+        var score = 0;
+        if (pw.length >= 6) score++;
+        if (pw.length >= 10) score++;
+        if (/[A-Z]/.test(pw)) score++;
+        if (/[0-9]/.test(pw)) score++;
+        if (/[^A-Za-z0-9]/.test(pw)) score++;
+        var labels = ["", "Weak", "Fair", "Good", "Strong", "Very strong"];
+        var colors = ["", "#f87171", "#fbbf24", "#fbbf24", "#4ade80", "#4ade80"];
+        var fill = document.getElementById("strengthFill");
+        var label = document.getElementById("strengthLabel");
+        if (fill) fill.style.width = (score / 5 * 100) + "%";
+        if (fill) fill.style.background = colors[score];
+        if (label) {
+          label.textContent = labels[score];
+          label.style.color = colors[score];
+        }
+      });
+    }
 
-    // Ganti bagian register form submit menjadi:
+    // Register form submit
     document.getElementById("registerForm").addEventListener("submit", async function (e) {
       e.preventDefault();
       var username = document.getElementById("username").value.trim();
@@ -116,30 +143,58 @@
       var confirm = document.getElementById("confirm").value;
       var btn = document.getElementById("registerBtn");
 
-      if (!username || !password || !confirm) { showMsg("Please fill in all fields.", "error"); return; }
-      if (password !== confirm) { showMsg("Passwords do not match.", "error"); return; }
+      if (!username || !password || !confirm) { 
+        showMsg("Please fill in all fields.", "error"); 
+        return; 
+      }
+      
+      if (username.length < 3) {
+        showMsg("Username must be at least 3 characters.", "error");
+        return;
+      }
+      
+      if (password.length < 6) {
+        showMsg("Password must be at least 6 characters.", "error");
+        return;
+      }
+      
+      if (password !== confirm) { 
+        showMsg("Passwords do not match.", "error"); 
+        return; 
+      }
 
       btn.disabled = true;
       document.querySelector(".auth-btn-text").textContent = "Creating…";
+      
       try {
+        console.log("Registering user:", username);
         var res = await fetch(API + "/auth/register", {
-          method: "POST", headers: { "Content-Type": "application/json" },
+          method: "POST", 
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ username: username, password: password })
         });
+        
         var data = await res.json();
+        
         if (!res.ok) throw new Error(data.error || "Registration failed");
 
+        console.log("Registration successful, saving token...");
+        
         // Simpan ke localStorage
         localStorage.setItem("token", data.token);
         localStorage.setItem("username", data.username);
-
-        // 🔥 SET COOKIE juga (penting untuk backend)
-        document.cookie = "token=" + data.token + "; path=/; max-age=" + (60 * 60 * 24 * 7);
-
-        window.location.href = APPROOT + "/";
+        
+        console.log("Token saved, redirecting to dashboard...");
+        
+        showMsg("Account created! Redirecting...", "success");
+        
+        setTimeout(function() {
+          window.location.href = APPROOT + "/";
+        }, 500);
+        
       } catch (err) {
+        console.error("Registration error:", err);
         showMsg(err.message, "error");
-      } finally {
         btn.disabled = false;
         document.querySelector(".auth-btn-text").textContent = "Create Account";
       }
@@ -147,7 +202,17 @@
 
     function showMsg(text, type) {
       var el = document.getElementById("authMessage");
-      el.textContent = text; el.className = "auth-message " + type;
+      el.textContent = text; 
+      el.className = "auth-message " + type;
+      
+      if (type === "success") {
+        setTimeout(function() {
+          if (el) {
+            el.textContent = "";
+            el.className = "auth-message";
+          }
+        }, 3000);
+      }
     }
   </script>
 </body>

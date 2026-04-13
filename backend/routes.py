@@ -299,3 +299,243 @@ def monthly_summary():
         })
  
     return jsonify(result), 200
+
+# ── GET /api/budget?month=YYYY-MM ─────────────────────────────────────────────
+@transactions_bp.route("/budget", methods=["GET"])
+@require_auth
+def get_budget():
+    """
+    Return the budget for a given month plus the current expense total.
+    Defaults to the current month if ?month= is not provided.
+    Also returns status: 'ok' | 'warning' (>=80%) | 'critical' (>=100%)
+    """
+    from datetime import date
+    month = request.args.get("month") or date.today().strftime("%Y-%m")
+ 
+    conn = get_db()
+ 
+    # Fetch the limit (may not exist yet)
+    budget_row = conn.execute(
+        "SELECT limit_amount FROM budgets WHERE user_id = ? AND month = ?",
+        (g.user_id, month)
+    ).fetchone()
+ 
+    # Fetch actual expense total for this month
+    expense_row = conn.execute("""
+        SELECT COALESCE(SUM(amount), 0) AS total_expense
+        FROM   transactions
+        WHERE  user_id = ? AND type = 'expense'
+          AND  strftime('%Y-%m', date) = ?
+    """, (g.user_id, month)).fetchone()
+ 
+    conn.close()
+ 
+    limit   = budget_row["limit_amount"] if budget_row else None
+    expense = expense_row["total_expense"]
+ 
+    # Calculate status only when a limit is set
+    status = None
+    pct    = None
+    if limit:
+        pct    = round((expense / limit) * 100, 1)
+        status = "critical" if pct >= 100 else "warning" if pct >= 80 else "ok"
+ 
+    return jsonify({
+        "month":         month,
+        "limit_amount":  limit,
+        "total_expense": round(expense, 2),
+        "remaining":     round(limit - expense, 2) if limit else None,
+        "percent_used":  pct,
+        "status":        status,
+    }), 200
+ 
+ 
+# ── POST /api/budget ──────────────────────────────────────────────────────────
+@transactions_bp.route("/budget", methods=["POST"])
+@require_auth
+def set_budget():
+    """
+    Create or update the expense limit for a month.
+    Body: { "month": "YYYY-MM", "limit_amount": 3000000 }
+    month defaults to current month if omitted.
+    """
+    from datetime import date
+    data  = request.get_json() or {}
+    month = data.get("month") or date.today().strftime("%Y-%m")
+ 
+    try:
+        limit = float(data.get("limit_amount", 0))
+        if limit <= 0:
+            raise ValueError
+    except (ValueError, TypeError):
+        return jsonify({"error": "limit_amount must be a positive number"}), 400
+ 
+    conn = get_db()
+    conn.execute("""
+        INSERT INTO budgets (user_id, month, limit_amount)
+        VALUES (?, ?, ?)
+        ON CONFLICT(user_id, month) DO UPDATE SET limit_amount = excluded.limit_amount
+    """, (g.user_id, month, limit))
+    conn.commit()
+    conn.close()
+ 
+    return jsonify({"message": "Budget saved", "month": month, "limit_amount": limit}), 200
+ 
+ 
+# ── DELETE /api/budget?month=YYYY-MM ─────────────────────────────────────────
+@transactions_bp.route("/budget", methods=["DELETE"])
+@require_auth
+def delete_budget():
+    """Remove the expense limit for a month."""
+    from datetime import date
+    month = request.args.get("month") or date.today().strftime("%Y-%m")
+ 
+    conn = get_db()
+    conn.execute(
+        "DELETE FROM budgets WHERE user_id = ? AND month = ?",
+        (g.user_id, month)
+    )
+    conn.commit()
+    conn.close()
+    return jsonify({"message": "Budget removed", "month": month}), 200
+
+# ── GET /api/analytics ────────────────────────────────────────────────────────
+@transactions_bp.route("/analytics", methods=["GET"])
+@require_auth
+def analytics():
+    """
+    Returns two datasets for charting:
+ 
+    1. category_breakdown — expense totals grouped by category for the
+       requested month (default = current month).
+ 
+    2. monthly_trend — income and expense totals for each of the last
+       N months (default 6), ordered oldest → newest for chart rendering.
+ 
+    Query params:
+      ?month=YYYY-MM   month for category breakdown  (default: current)
+      ?months=N        how many months back for trend (default: 6, max: 24)
+    """
+    from datetime import date, timedelta
+ 
+    conn  = get_db()
+    today = date.today()
+ 
+    # ── Param: which month for breakdown ─────────────────────
+    month = request.args.get("month") or today.strftime("%Y-%m")
+ 
+    # ── Param: how many months for trend ─────────────────────
+    try:
+        n_months = min(int(request.args.get("months", 6)), 24)
+    except (ValueError, TypeError):
+        n_months = 6
+ 
+    # ── 1. Category breakdown (expenses only) ─────────────────
+    cat_rows = conn.execute("""
+        SELECT category,
+               SUM(amount) AS total
+        FROM   transactions
+        WHERE  user_id = ?
+          AND  type    = 'expense'
+          AND  strftime('%Y-%m', date) = ?
+        GROUP  BY category
+        ORDER  BY total DESC
+    """, (g.user_id, month)).fetchall()
+ 
+    total_expense = sum(r["total"] for r in cat_rows)
+    breakdown = []
+    for row in cat_rows:
+        breakdown.append({
+            "category": row["category"],
+            "amount":   round(row["total"], 2),
+            "percent":  round((row["total"] / total_expense * 100), 1) if total_expense else 0,
+        })
+ 
+    # ── 2. Monthly trend (last N months) ──────────────────────
+    # Build the list of YYYY-MM strings we want, oldest first
+    trend_months = []
+    for i in range(n_months - 1, -1, -1):
+        # subtract i months from today
+        y = today.year
+        m = today.month - i
+        while m <= 0:
+            m += 12; y -= 1
+        trend_months.append(f"{y:04d}-{m:02d}")
+ 
+    trend_rows = conn.execute("""
+        SELECT strftime('%Y-%m', date)                                    AS month,
+               COALESCE(SUM(CASE WHEN type='income'  THEN amount END), 0) AS income,
+               COALESCE(SUM(CASE WHEN type='expense' THEN amount END), 0) AS expense
+        FROM   transactions
+        WHERE  user_id = ?
+          AND  strftime('%Y-%m', date) >= ?
+        GROUP  BY month
+        ORDER  BY month ASC
+    """, (g.user_id, trend_months[0])).fetchall()
+ 
+    # Index by month so missing months get zeros
+    trend_index = {r["month"]: r for r in trend_rows}
+    trend = []
+    for m in trend_months:
+        row = trend_index.get(m)
+        trend.append({
+            "month":   m,
+            "income":  round(row["income"],  2) if row else 0,
+            "expense": round(row["expense"], 2) if row else 0,
+        })
+ 
+    conn.close()
+    return jsonify({
+        "month":              month,
+        "category_breakdown": breakdown,
+        "total_expense":      round(total_expense, 2),
+        "monthly_trend":      trend,
+    }), 200
+ 
+ 
+# ── GET /api/summary/categories ──────────────────────────────────────────────
+@transactions_bp.route("/summary/categories", methods=["GET"])
+@require_auth
+def category_breakdown():
+    """
+    Returns expense totals grouped by category, with percentage share.
+    Optional: ?month=YYYY-MM  (defaults to all time)
+              ?from=YYYY-MM-DD  ?to=YYYY-MM-DD
+    """
+    conn   = get_db()
+    query  = """
+        SELECT
+            category,
+            COALESCE(SUM(amount), 0) AS total
+        FROM transactions
+        WHERE user_id = ? AND type = 'expense'
+    """
+    params = [g.user_id]
+ 
+    if month := request.args.get("month"):
+        query += " AND strftime('%Y-%m', date) = ?"; params.append(month)
+    else:
+        if from_date := request.args.get("from"):
+            query += " AND date >= ?"; params.append(from_date)
+        if to_date := request.args.get("to"):
+            query += " AND date <= ?"; params.append(to_date)
+ 
+    query += " GROUP BY category ORDER BY total DESC"
+    rows   = conn.execute(query, params).fetchall()
+    conn.close()
+ 
+    grand_total = sum(r["total"] for r in rows)
+ 
+    result = []
+    for row in rows:
+        result.append({
+            "category":  row["category"],
+            "total":     round(row["total"], 2),
+            "percent":   round((row["total"] / grand_total * 100), 1) if grand_total else 0,
+        })
+ 
+    return jsonify({
+        "categories":  result,
+        "grand_total": round(grand_total, 2),
+    }), 200
+ 

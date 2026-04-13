@@ -10,6 +10,7 @@
     href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap"
     rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+  <script src="config.js"></script>
 </head>
 
 <body>
@@ -52,6 +53,41 @@
   <section class="budget-section" id="budgetSection">
     <div class="budget-wrapper" id="budgetWrapper">
       <!-- Rendered by JS -->
+    </div>
+  </section>
+
+  <!-- ── Monthly Budget Limit ──────────────────────── -->
+  <section class="monthly-budget-section">
+    <div class="monthly-budget-card" id="monthlyBudgetCard">
+      <!-- Rendered by JS -->
+    </div>
+  </section>
+
+  <!-- ── Analytics / Charts (SVG version - WORKING) ── -->
+  <section class="charts-section">
+    <div class="charts-grid">
+      <!-- Donut: expense by category -->
+      <div class="panel chart-panel">
+        <div class="chart-header">
+          <h3 class="chart-title">Expenses by Category</h3>
+          <select class="chart-select" id="donutMonthSelect">
+            <option value="">All time</option>
+          </select>
+        </div>
+        <div class="donut-wrap" id="donutWrap">
+          <div class="tx-empty">Loading…</div>
+        </div>
+      </div>
+      <!-- Bar: monthly income vs expense -->
+      <div class="panel chart-panel">
+        <div class="chart-header">
+          <h3 class="chart-title">Income vs Expenses</h3>
+          <span class="chart-subtitle" id="barSubtitle">Last 6 months</span>
+        </div>
+        <div class="bar-wrap" id="barWrap">
+          <div class="tx-empty">Loading…</div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -200,20 +236,20 @@
         <h3 class="drawer-title">Summary History</h3>
         <button class="modal-close" id="historyClose">&#x2715;</button>
       </div>
- 
+
       <!-- Tabs -->
       <div class="history-tabs">
         <button class="history-tab active" data-tab="daily">Daily</button>
         <button class="history-tab" data-tab="monthly">Monthly</button>
       </div>
- 
+
       <!-- Daily tab -->
       <div class="history-pane" id="historyDaily">
         <div class="drawer-body" id="dailyBody">
           <div class="tx-empty">Loading...</div>
         </div>
       </div>
- 
+
       <!-- Monthly tab -->
       <div class="history-pane" id="historyMonthly" style="display:none">
         <div class="drawer-body" id="monthlyBody">

@@ -35,6 +35,17 @@ def init_db():
             created_at  TEXT    DEFAULT CURRENT_TIMESTAMP
         )
     """)
+    
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS budgets (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            month        TEXT    NOT NULL,
+            limit_amount REAL    NOT NULL CHECK(limit_amount > 0),
+            created_at   TEXT    DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, month)
+        )
+    """)
 
     # Safe migration for existing DBs that have no user_id column
     try:
