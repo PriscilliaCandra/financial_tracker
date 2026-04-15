@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, g
 from werkzeug.security import generate_password_hash, check_password_hash
-from database import get_db
+from database import get_db, insert_default_categories
 from auth import create_token, require_auth
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
@@ -34,6 +34,7 @@ def register():
     )
     conn.commit()
     user_id = cursor.lastrowid
+    insert_default_categories(user_id)
     conn.close()
 
     token = create_token(user_id, username)

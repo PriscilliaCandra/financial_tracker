@@ -1,18 +1,16 @@
-// script.js - AWAL
+// script.js - LENGKAP (sudah diperbaiki)
 console.log("=== SCRIPT.JS START ===");
-console.log("window.API:", window.API);
-console.log("window.APPROOT:", window.APPROOT);
 
-console.log("DEBUG TOKEN (script.js):", localStorage.getItem("token"));
-// const API = "http://127.0.0.1:5000/api";
-// const APPROOT = "http://127.0.0.1:5000";
+// Konfigurasi API
 const API = window.API || "http://127.0.0.1:5000/api";
 const APPROOT = window.APPROOT || "http://127.0.0.1:5000";
 
 console.log("Final API:", API);
 console.log("Final APPROOT:", APPROOT);
 
-/* ── Auth guard ─────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   AUTH GUARD
+   ═══════════════════════════════════════════════════════════════ */
 function isTokenValid(token) {
   if (!token || token === "null" || token === "undefined") return false;
   try {
@@ -33,61 +31,9 @@ if (!window.location.pathname.includes('/login') && !window.location.pathname.in
   }
 }
 
-/* ── Data Categories ────────────────────────────────────── */
-const incomeCategories = ["Salary", "Freelance", "Investment", "Other Income"];
-const expenseCategories = ["Food", "Transport", "Housing", "Health", "Entertainment", "Shopping", "Other Expense"];
-
-/* ── Dynamic Category Functions ─────────────────────────── */
-function updateCategoryOptions(type) {
-  var categorySelect = document.getElementById("category");
-  if (!categorySelect) return;
-
-  var previousValue = categorySelect.value;
-  categorySelect.innerHTML = '';
-
-  var defaultOption = document.createElement('option');
-  defaultOption.value = '';
-  defaultOption.disabled = true;
-  defaultOption.selected = true;
-  defaultOption.textContent = 'Select…';
-  categorySelect.appendChild(defaultOption);
-
-  var categories = type === 'income' ? incomeCategories : expenseCategories;
-
-  categories.forEach(function (cat) {
-    var option = document.createElement('option');
-    option.value = cat;
-    option.textContent = cat;
-    categorySelect.appendChild(option);
-  });
-
-  if (previousValue && categories.includes(previousValue)) {
-    categorySelect.value = previousValue;
-  }
-}
-
-function updateEditCategoryOptions(type) {
-  var editCategorySelect = document.getElementById("editCategory");
-  if (!editCategorySelect) return;
-
-  var previousValue = editCategorySelect.value;
-  editCategorySelect.innerHTML = '';
-
-  var categories = type === 'income' ? incomeCategories : expenseCategories;
-
-  categories.forEach(function (cat) {
-    var option = document.createElement('option');
-    option.value = cat;
-    option.textContent = cat;
-    editCategorySelect.appendChild(option);
-  });
-
-  if (previousValue && categories.includes(previousValue)) {
-    editCategorySelect.value = previousValue;
-  }
-}
-
-/* ── Auth fetch wrapper ─────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   AUTH FETCH WRAPPER
+   ═══════════════════════════════════════════════════════════════ */
 function authFetch(url, options) {
   options = options || {};
   options.headers = options.headers || {};
@@ -107,7 +53,9 @@ function authFetch(url, options) {
   });
 }
 
-/* ── State ──────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   STATE & DOM REFS
+   ═══════════════════════════════════════════════════════════════ */
 var allTransactions = [];
 var filterType = "all";
 var filterSort = "latest";
@@ -115,7 +63,6 @@ var filterCategory = "";
 var filterFrom = "";
 var filterTo = "";
 
-/* ── DOM refs ───────────────────────────────────────────── */
 var txList = document.getElementById("txList");
 var txForm = document.getElementById("txForm");
 var formMessage = document.getElementById("formMessage");
@@ -132,12 +79,21 @@ var editMessage = document.getElementById("editMessage");
 var editSubmitBtn = document.getElementById("editSubmitBtn");
 var monthlyBudgetCard = document.getElementById("monthlyBudgetCard");
 
-/* ── History Drawer Elements ────────────────────────────── */
+// History Drawer Elements
 var historyOverlay = document.getElementById("historyOverlay");
 var historyClose = document.getElementById("historyClose");
 var activeHistoryTab = "daily";
 
-/* ── Helpers ────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════════════════════════════ */
+function formatNumber(n) {
+  return new Intl.NumberFormat("id-ID", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(n);
+}
+
 function formatRp(n) {
   return new Intl.NumberFormat("id-ID", {
     style: "currency", currency: "IDR", minimumFractionDigits: 0
@@ -185,7 +141,9 @@ function spentPct(expense, income) {
   return Math.min(100, Math.round((expense / income) * 100));
 }
 
-/* ── Summary ────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   SUMMARY
+   ═══════════════════════════════════════════════════════════════ */
 async function fetchSummary() {
   try {
     var data = await authFetch(API + "/summary").then(function (r) { return r.json(); });
@@ -197,7 +155,9 @@ async function fetchSummary() {
   }
 }
 
-/* ── Budget Tracker ─────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   BUDGET TRACKER
+   ═══════════════════════════════════════════════════════════════ */
 async function fetchBudget() {
   try {
     var data = await authFetch(API + "/salary-summary").then(function (r) { return r.json(); });
@@ -260,7 +220,9 @@ var drawerClose = document.getElementById("drawerClose");
 if (drawerClose) drawerClose.addEventListener("click", function () { if (drawerOverlay) drawerOverlay.classList.remove("open"); });
 if (drawerOverlay) drawerOverlay.addEventListener("click", function (e) { if (e.target === drawerOverlay) drawerOverlay.classList.remove("open"); });
 
-/* ── Transaction List ───────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   TRANSACTION LIST
+   ═══════════════════════════════════════════════════════════════ */
 async function fetchTransactions() {
   try {
     var params = [];
@@ -278,10 +240,12 @@ async function fetchTransactions() {
 
 function renderList() {
   if (!txList) return;
+
   var items = filterType === "all" ? allTransactions.slice() : allTransactions.filter(function (t) { return t.type === filterType; });
   if (filterCategory) items = items.filter(function (t) { return t.category === filterCategory; });
   if (filterFrom) items = items.filter(function (t) { return t.date >= filterFrom; });
   if (filterTo) items = items.filter(function (t) { return t.date <= filterTo; });
+
   items.sort(function (a, b) {
     if (filterSort === "latest") return (a.date < b.date) ? 1 : (a.date > b.date) ? -1 : 0;
     if (filterSort === "oldest") return (a.date > b.date) ? 1 : (a.date < b.date) ? -1 : 0;
@@ -289,14 +253,34 @@ function renderList() {
     if (filterSort === "lowest") return a.amount - b.amount;
     return 0;
   });
+
   updateFilterSummary(items.length);
+
   if (items.length === 0) {
     txList.innerHTML = '<li class="tx-empty">No transactions match your filters.</li>';
     return;
   }
+
+  // HANYA SATU KALI assign txList.innerHTML (yang dengan currency)
   txList.innerHTML = items.map(function (t, i) {
-    return '<li class="tx-item" data-id="' + t.id + '" style="animation-delay:' + (i * 0.035) + 's"><span class="tx-dot tx-dot--' + t.type + '"></span><div class="tx-meta"><div class="tx-category">' + escHtml(t.category) + '</div><div class="tx-sub">' + t.date + (t.note ? ' · ' + escHtml(t.note) : '') + '</div></div><span class="tx-amount tx-amount--' + t.type + '">' + (t.type === "income" ? "+" : "−") + formatRp(t.amount) + '</span><div class="tx-actions"><button class="btn-action btn-edit" title="Edit" data-id="' + t.id + '">&#9998;</button><button class="btn-action btn-delete" title="Delete" data-id="' + t.id + '">&#x2715;</button></div></li>';
+    return '<li class="tx-item" data-id="' + t.id + '" style="animation-delay:' + (i * 0.035) + 's">' +
+      '<span class="tx-dot tx-dot--' + t.type + '"></span>' +
+      '<div class="tx-meta">' +
+      '<div class="tx-category">' + escHtml(t.category) + '</div>' +
+      '<div class="tx-sub">' + t.date + (t.note ? ' · ' + escHtml(t.note) : '') + '</div>' +
+      '</div>' +
+      '<span class="tx-amount tx-amount--' + t.type + '">' +
+      (t.type === "income" ? "+" : "−") +
+      '<span class="tx-currency">' + (t.currency || "IDR") + '</span> ' +
+      formatNumber(t.amount) +  
+      '</span>' +
+      '<div class="tx-actions">' +
+      '<button class="btn-action btn-edit" title="Edit" data-id="' + t.id + '">&#9998;</button>' +
+      '<button class="btn-action btn-delete" title="Delete" data-id="' + t.id + '">&#x2715;</button>' +
+      '</div>' +
+      '</li>';
   }).join("");
+
   txList.querySelectorAll(".btn-edit").forEach(function (btn) {
     btn.addEventListener("click", function () { openEditModal(parseInt(btn.dataset.id)); });
   });
@@ -305,7 +289,9 @@ function renderList() {
   });
 }
 
-/* ── Add Transaction ────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   ADD TRANSACTION
+   ═══════════════════════════════════════════════════════════════ */
 if (txForm) {
   txForm.addEventListener("submit", async function (e) {
     e.preventDefault();
@@ -315,6 +301,7 @@ if (txForm) {
       category: document.getElementById("category").value,
       amount: parseFloat(document.getElementById("amount").value),
       note: document.getElementById("note").value.trim(),
+      currency: document.getElementById("currency").value,
     };
     if (!payload.date || !payload.category || isNaN(payload.amount)) {
       showMessage(formMessage, "Please fill all required fields.", "error");
@@ -350,7 +337,9 @@ if (txForm) {
   });
 }
 
-/* ── Edit Transaction ───────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   EDIT TRANSACTION
+   ═══════════════════════════════════════════════════════════════ */
 function openEditModal(id) {
   var t = allTransactions.find(function (tx) { return tx.id === id; });
   if (!t) return;
@@ -358,6 +347,7 @@ function openEditModal(id) {
   document.getElementById("editDate").value = t.date;
   document.getElementById("editAmount").value = t.amount;
   document.getElementById("editNote").value = t.note || "";
+  document.getElementById("editCurrency").value = t.currency || "IDR";
   setEditType(t.type);
   var editCategorySelect = document.getElementById("editCategory");
   if (editCategorySelect) editCategorySelect.value = t.category;
@@ -386,6 +376,7 @@ if (editForm) {
       category: document.getElementById("editCategory").value,
       amount: parseFloat(document.getElementById("editAmount").value),
       note: document.getElementById("editNote").value.trim(),
+      currency: document.getElementById("editCurrency").value,
     };
     if (!payload.date || !payload.category || isNaN(payload.amount)) {
       showMessage(editMessage, "Please fill all required fields.", "error");
@@ -418,7 +409,9 @@ if (editForm) {
   });
 }
 
-/* ── Delete Transaction ─────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   DELETE TRANSACTION
+   ═══════════════════════════════════════════════════════════════ */
 async function confirmDelete(id) {
   var t = allTransactions.find(function (tx) { return tx.id === id; });
   if (!t) return;
@@ -430,7 +423,9 @@ async function confirmDelete(id) {
   } catch (err) { alert(err.message); }
 }
 
-/* ── Type Toggles ───────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   TYPE TOGGLES
+   ═══════════════════════════════════════════════════════════════ */
 function setType(value) {
   var typeInput = document.getElementById("type");
   if (typeInput) typeInput.value = value;
@@ -456,7 +451,9 @@ document.querySelectorAll(".toggle[data-edit-value]").forEach(function (btn) {
   btn.addEventListener("click", function () { setEditType(btn.dataset.editValue); });
 });
 
-/* ── Filter & Sort Controls ─────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   FILTER & SORT CONTROLS
+   ═══════════════════════════════════════════════════════════════ */
 var btnFilterToggle = document.getElementById("btnFilterToggle");
 if (btnFilterToggle) {
   btnFilterToggle.addEventListener("click", function () {
@@ -519,7 +516,9 @@ function updateFilterSummary(count) {
   }
 }
 
-/* ── Monthly Budget ─────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   MONTHLY BUDGET
+   ═══════════════════════════════════════════════════════════════ */
 async function fetchMonthlyBudget() {
   if (!monthlyBudgetCard) return;
   try {
@@ -612,7 +611,9 @@ function renderMonthlyBudget(data) {
   }
 }
 
-/* ── Charts ─────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   CHARTS
+   ═══════════════════════════════════════════════════════════════ */
 var CHART_COLORS = ["#e8d5b0", "#4ade80", "#f87171", "#60a5fa", "#fbbf24", "#a78bfa", "#34d399", "#fb923c"];
 var chartTooltip = (function () {
   var el = document.createElement("div");
@@ -752,20 +753,27 @@ async function populateMonthSelector() {
   try {
     var rows = await authFetch(API + "/summary/monthly").then(function (r) { return r.json(); });
     var select = document.getElementById("donutMonthSelect");
-    if (!select || !rows.length) return;
-    rows.forEach(function (row) {
-      var parts = row.month.split("-");
-      var label = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-      var opt = document.createElement("option");
-      opt.value = row.month;
-      opt.textContent = label;
-      select.appendChild(opt);
-    });
+    if (!select) return;
+    while (select.options.length > 1) select.remove(1);
+    if (rows && rows.length) {
+      rows.forEach(function (row) {
+        var parts = row.month.split("-");
+        var label = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+        var opt = document.createElement("option");
+        opt.value = row.month;
+        opt.textContent = label;
+        select.appendChild(opt);
+      });
+    }
     select.addEventListener("change", function () { fetchCategoryChart(this.value); });
-  } catch (e) { }
+  } catch (e) {
+    console.error("Populate month selector error:", e);
+  }
 }
 
-/* ── History Summary Functions ──────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   HISTORY SUMMARY
+   ═══════════════════════════════════════════════════════════════ */
 function openHistoryDrawer() {
   if (historyOverlay) {
     historyOverlay.classList.add("open");
@@ -853,28 +861,457 @@ function addHistoryButton() {
 if (historyClose) historyClose.addEventListener("click", closeHistoryDrawer);
 if (historyOverlay) historyOverlay.addEventListener("click", function (e) { if (e.target === historyOverlay) closeHistoryDrawer(); });
 
-/* ── Refresh ────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   MULTI CURRENCY
+   ═══════════════════════════════════════════════════════════════ */
+// let currentCurrency = localStorage.getItem("preferredCurrency") || "IDR";
+// let exchangeRates = {};
+
+// async function fetchExchangeRates() {
+//   try {
+//     const response = await fetch(`https://api.exchangerate-api.com/v4/latest/IDR`);
+//     const data = await response.json();
+//     exchangeRates = data.rates;
+//     console.log("Exchange rates loaded:", exchangeRates);
+//   } catch (error) {
+//     console.error("Failed to load exchange rates:", error);
+//     exchangeRates = { IDR: 1, USD: 15500, SGD: 11500, MYR: 3300, EUR: 16800, JPY: 100 };
+//   }
+// }
+
+// function convertAmount(amount, fromCurrency, toCurrency) {
+//   if (fromCurrency === toCurrency) return amount;
+//   const amountInIdr = amount / (exchangeRates[fromCurrency] || 1);
+//   return amountInIdr * (exchangeRates[toCurrency] || 1);
+// }
+
+// function formatAmountWithCurrency(amount, currency) {
+//   const symbols = { IDR: "Rp", USD: "$", SGD: "S$", MYR: "RM", EUR: "€", JPY: "¥" };
+//   const symbol = symbols[currency] || currency;
+//   return `${symbol} ${amount.toLocaleString()}`;
+// }
+
+// async function updateDisplayCurrency() {
+//   const newCurrency = document.getElementById("currencySelect").value;
+//   currentCurrency = newCurrency;
+//   localStorage.setItem("preferredCurrency", currentCurrency);
+//   await refresh();
+// }
+
+/* ═══════════════════════════════════════════════════════════════
+   EXPORT EXCEL & PDF
+   ═══════════════════════════════════════════════════════════════ */
+document.getElementById("exportExcelBtn")?.addEventListener("click", async () => {
+  try {
+    const response = await authFetch(API + "/export/excel");
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `transactions_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Export failed:", error);
+    alert("Export failed. Please try again.");
+  }
+});
+
+document.getElementById("exportPdfBtn")?.addEventListener("click", async () => {
+  try {
+    const response = await authFetch(API + "/export/pdf");
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `transactions_${new Date().toISOString().slice(0, 10)}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error("Export failed:", error);
+    alert("Export failed. Please try again.");
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   CUSTOM CATEGORIES (CRUD)
+   ═══════════════════════════════════════════════════════════════ */
+let allCategories = { income: [], expense: [] };
+
+async function fetchCategories() {
+  try {
+    const response = await authFetch(API + "/categories");
+    const data = await response.json();
+    allCategories.income = data.filter(c => c.type === "income");
+    allCategories.expense = data.filter(c => c.type === "expense");
+    updateCategoryDropdowns();
+    return data;
+  } catch (error) {
+    console.error("Failed to fetch categories:", error);
+  }
+}
+
+function updateCategoryDropdowns() {
+  const categorySelect = document.getElementById("category");
+  const editCategorySelect = document.getElementById("editCategory");
+  const filterCategorySelect = document.getElementById("filterCategory");
+
+  if (categorySelect) {
+    const currentValue = categorySelect.value;
+    categorySelect.innerHTML = '<option value="" disabled selected>Select…</option>';
+
+    const incomeGroup = document.createElement("optgroup");
+    incomeGroup.label = "Income";
+    allCategories.income.forEach(cat => {
+      const option = document.createElement("option");
+      option.value = cat.name;
+      option.textContent = cat.name;
+      incomeGroup.appendChild(option);
+    });
+    categorySelect.appendChild(incomeGroup);
+
+    const expenseGroup = document.createElement("optgroup");
+    expenseGroup.label = "Expense";
+    allCategories.expense.forEach(cat => {
+      const option = document.createElement("option");
+      option.value = cat.name;
+      option.textContent = cat.name;
+      expenseGroup.appendChild(option);
+    });
+    categorySelect.appendChild(expenseGroup);
+
+    if (currentValue && [...allCategories.income, ...allCategories.expense].some(c => c.name === currentValue)) {
+      categorySelect.value = currentValue;
+    }
+  }
+
+  if (editCategorySelect) {
+    const currentValue = editCategorySelect.value;
+    editCategorySelect.innerHTML = '';
+
+    const incomeGroup = document.createElement("optgroup");
+    incomeGroup.label = "Income";
+    allCategories.income.forEach(cat => {
+      const option = document.createElement("option");
+      option.value = cat.name;
+      option.textContent = cat.name;
+      incomeGroup.appendChild(option);
+    });
+    editCategorySelect.appendChild(incomeGroup);
+
+    const expenseGroup = document.createElement("optgroup");
+    expenseGroup.label = "Expense";
+    allCategories.expense.forEach(cat => {
+      const option = document.createElement("option");
+      option.value = cat.name;
+      option.textContent = cat.name;
+      expenseGroup.appendChild(option);
+    });
+    editCategorySelect.appendChild(expenseGroup);
+
+    if (currentValue && [...allCategories.income, ...allCategories.expense].some(c => c.name === currentValue)) {
+      editCategorySelect.value = currentValue;
+    }
+  }
+
+  if (filterCategorySelect) {
+    const currentValue = filterCategorySelect.value;
+    filterCategorySelect.innerHTML = '<option value="">All categories</option>';
+
+    const allCats = [...allCategories.income, ...allCategories.expense];
+    allCats.forEach(cat => {
+      const option = document.createElement("option");
+      option.value = cat.name;
+      option.textContent = cat.name;
+      filterCategorySelect.appendChild(option);
+    });
+
+    if (currentValue) filterCategorySelect.value = currentValue;
+  }
+}
+
+function updateCategoryOptions(type) {
+  const categorySelect = document.getElementById("category");
+  if (!categorySelect) return;
+  const previousValue = categorySelect.value;
+  categorySelect.innerHTML = '<option value="" disabled selected>Select…</option>';
+  const categories = type === 'income' ? allCategories.income : allCategories.expense;
+  categories.forEach(function (cat) {
+    const option = document.createElement('option');
+    option.value = cat.name;
+    option.textContent = cat.name;
+    categorySelect.appendChild(option);
+  });
+  if (previousValue && categories.some(c => c.name === previousValue)) {
+    categorySelect.value = previousValue;
+  }
+}
+
+function updateEditCategoryOptions(type) {
+  const editCategorySelect = document.getElementById("editCategory");
+  if (!editCategorySelect) return;
+  const previousValue = editCategorySelect.value;
+  editCategorySelect.innerHTML = '';
+  const categories = type === 'income' ? allCategories.income : allCategories.expense;
+  categories.forEach(function (cat) {
+    const option = document.createElement('option');
+    option.value = cat.name;
+    option.textContent = cat.name;
+    editCategorySelect.appendChild(option);
+  });
+  if (previousValue && categories.some(c => c.name === previousValue)) {
+    editCategorySelect.value = previousValue;
+  }
+}
+
+const categoryModal = document.getElementById("categoryModalOverlay");
+const manageCategoriesBtn = document.getElementById("manageCategoriesBtn");
+const categoryModalClose = document.getElementById("categoryModalClose");
+
+manageCategoriesBtn?.addEventListener("click", () => {
+  renderCategoryList("income");
+  categoryModal.classList.add("open");
+});
+
+categoryModalClose?.addEventListener("click", () => {
+  categoryModal.classList.remove("open");
+});
+
+categoryModal?.addEventListener("click", (e) => {
+  if (e.target === categoryModal) categoryModal.classList.remove("open");
+});
+
+document.querySelectorAll(".category-tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".category-tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    renderCategoryList(tab.dataset.catType);
+  });
+});
+
+async function renderCategoryList(type) {
+  const container = document.getElementById("categoryListContainer");
+  const categories = allCategories[type] || [];
+  container.innerHTML = categories.map(cat => `
+        <div class="category-item" data-id="${cat.id}" data-name="${cat.name}">
+            <span class="category-name">${escHtml(cat.name)}</span>
+            <div class="category-actions">
+                ${!cat.is_default ? `
+                    <button class="btn-edit-cat" onclick="editCategory(${cat.id}, '${cat.name}')">✏️</button>
+                    <button class="btn-delete-cat" onclick="deleteCategory(${cat.id})">🗑️</button>
+                ` : '<span class="default-badge">Default</span>'}
+            </div>
+        </div>
+    `).join("");
+}
+
+window.editCategory = async (id, oldName) => {
+  const newName = prompt("Enter new category name:", oldName);
+  if (!newName || newName === oldName) return;
+  try {
+    const response = await authFetch(API + `/categories/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName })
+    });
+    if (response.ok) {
+      await fetchCategories();
+      await refresh();
+      renderCategoryList(document.querySelector(".category-tab.active").dataset.catType);
+    } else {
+      const error = await response.json();
+      alert(error.error || "Failed to update category");
+    }
+  } catch (error) {
+    console.error("Edit category failed:", error);
+  }
+};
+
+window.deleteCategory = async (id) => {
+  if (!confirm("Delete this category? Transactions using it will not be deleted, but the category will be removed.")) return;
+  try {
+    const response = await authFetch(API + `/categories/${id}`, { method: "DELETE" });
+    if (response.ok) {
+      await fetchCategories();
+      await refresh();
+      renderCategoryList(document.querySelector(".category-tab.active").dataset.catType);
+    } else {
+      const error = await response.json();
+      alert(error.error || "Failed to delete category");
+    }
+  } catch (error) {
+    console.error("Delete category failed:", error);
+  }
+};
+
+document.getElementById("addCategoryBtn")?.addEventListener("click", async () => {
+  const nameInput = document.getElementById("newCategoryName");
+  const name = nameInput.value.trim();
+  const activeTab = document.querySelector(".category-tab.active");
+  const type = activeTab?.dataset.catType || "income";
+  if (!name) {
+    alert("Please enter a category name");
+    return;
+  }
+  try {
+    const response = await authFetch(API + "/categories", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, type })
+    });
+    if (response.ok) {
+      nameInput.value = "";
+      await fetchCategories();
+      renderCategoryList(type);
+    } else {
+      const error = await response.json();
+      alert(error.error || "Failed to add category");
+    }
+  } catch (error) {
+    console.error("Add category failed:", error);
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   UPLOAD & OCR
+   ═══════════════════════════════════════════════════════════════ */
+const uploadDropzone = document.getElementById("uploadDropzone");
+const receiptFile = document.getElementById("receiptFile");
+const uploadPreview = document.getElementById("uploadPreview");
+const previewFilename = document.getElementById("previewFilename");
+const previewSuggestion = document.getElementById("previewSuggestion");
+const clearUploadBtn = document.getElementById("clearUploadBtn");
+const applyOcrBtn = document.getElementById("applyOcrBtn");
+let lastOcrData = null;
+
+uploadDropzone?.addEventListener("click", () => receiptFile.click());
+uploadDropzone?.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  uploadDropzone.style.borderColor = "var(--accent)";
+});
+uploadDropzone?.addEventListener("dragleave", () => {
+  uploadDropzone.style.borderColor = "var(--border)";
+});
+uploadDropzone?.addEventListener("drop", async (e) => {
+  e.preventDefault();
+  uploadDropzone.style.borderColor = "var(--border)";
+  const file = e.dataTransfer.files[0];
+  if (file) await processReceipt(file);
+});
+
+receiptFile?.addEventListener("change", async (e) => {
+  if (e.target.files[0]) await processReceipt(e.target.files[0]);
+});
+
+async function processReceipt(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  uploadDropzone.style.opacity = "0.5";
+  uploadDropzone.style.pointerEvents = "none";
+  try {
+    const response = await authFetch(API + "/upload-receipt", {
+      method: "POST",
+      body: formData
+    });
+    const data = await response.json();
+    if (response.ok) {
+      lastOcrData = data;
+      previewFilename.textContent = file.name;
+      previewSuggestion.innerHTML = `
+                <strong>📝 Extracted:</strong><br>
+                ${data.extracted_text.substring(0, 200)}...
+                ${data.suggested_amount ? `<br><strong>💰 Suggested amount:</strong> ${data.suggested_amount}` : ""}
+            `;
+      uploadDropzone.style.display = "none";
+      uploadPreview.style.display = "block";
+    } else {
+      alert(data.error || "OCR processing failed");
+      resetUploadArea();
+    }
+  } catch (error) {
+    console.error("Upload failed:", error);
+    alert("Upload failed. Please try again.");
+    resetUploadArea();
+  } finally {
+    uploadDropzone.style.opacity = "1";
+    uploadDropzone.style.pointerEvents = "auto";
+    receiptFile.value = "";
+  }
+}
+
+clearUploadBtn?.addEventListener("click", resetUploadArea);
+
+function resetUploadArea() {
+  uploadDropzone.style.display = "block";
+  uploadPreview.style.display = "none";
+  lastOcrData = null;
+}
+
+applyOcrBtn?.addEventListener("click", () => {
+  if (lastOcrData && lastOcrData.suggested_amount) {
+    const amountInput = document.getElementById("amount");
+    if (amountInput) amountInput.value = lastOcrData.suggested_amount;
+    const noteInput = document.getElementById("note");
+    if (noteInput && lastOcrData.extracted_text) {
+      noteInput.value = lastOcrData.extracted_text.substring(0, 100);
+    }
+    alert("Amount and note have been filled from the receipt!");
+    resetUploadArea();
+  } else {
+    alert("No amount detected in the receipt. Please fill manually.");
+  }
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   REFRESH FUNCTION
+   ═══════════════════════════════════════════════════════════════ */
 async function refresh() {
   console.log("Refreshing data...");
   try {
-    await Promise.all([fetchTransactions(), fetchSummary(), fetchBudget(), fetchMonthlyBudget(), fetchCategoryChart(""), fetchBarChart()]);
+    await Promise.all([
+      fetchTransactions(),
+      fetchSummary(),
+      fetchBudget(),
+      fetchMonthlyBudget(),
+      fetchCategoryChart(""),
+      fetchBarChart()
+    ]);
     console.log("Data refresh complete");
   } catch (error) {
     console.error("Error refreshing data:", error);
   }
 }
 
-/* ── Init ───────────────────────────────────────────────── */
-function init() {
+/* ═══════════════════════════════════════════════════════════════
+   INIT FUNCTION
+   ═══════════════════════════════════════════════════════════════ */
+async function init() {
   if (!isTokenValid(localStorage.getItem("token"))) {
     window.location.href = APPROOT + "/login";
     return;
   }
+
+  // await fetchExchangeRates();
+  // const currencySelect = document.getElementById("currencySelect");
+  // if (currencySelect) {
+  //   currencySelect.value = currentCurrency;
+  //   currencySelect.addEventListener("change", updateDisplayCurrency);
+  // }
+
+  await fetchCategories();
+  updateCategoryDropdowns();
+
   renderHeaderDate();
   setDefaultDate();
+
   var username = localStorage.getItem("username") || "";
   var headerEl = document.getElementById("headerUsername");
   if (headerEl) headerEl.textContent = username ? "◈ " + username : "";
+
   var logoutBtn = document.getElementById("logoutBtn");
   if (logoutBtn) {
     logoutBtn.addEventListener("click", function () {
@@ -884,11 +1321,14 @@ function init() {
       }
     });
   }
+
   updateCategoryOptions("income");
   updateEditCategoryOptions("income");
+
   addHistoryButton();
   populateMonthSelector();
-  refresh();
+
+  await refresh();
 }
 
 if (!window.location.pathname.includes("/login") && !window.location.pathname.includes("/register")) {
@@ -898,4 +1338,3 @@ if (!window.location.pathname.includes("/login") && !window.location.pathname.in
     init();
   }
 }
-

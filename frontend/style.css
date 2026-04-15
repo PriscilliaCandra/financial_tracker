@@ -2148,3 +2148,276 @@ select option {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Currency Selector ──────────────────────────────────── */
+/* Currency selector inside input group */
+.input-prefix {
+  display: flex;
+  align-items: center;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  transition: border-color 0.2s;
+}
+
+.input-prefix:focus-within {
+  border-color: var(--accent);
+}
+
+.input-prefix input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 0.65rem 0.85rem;
+  color: var(--text);
+  font-size: 0.92rem;
+  outline: none;
+}
+
+.currency-input-select {
+  width: auto;
+  min-width: 85px;
+  background: var(--surface2);
+  border: none;
+  border-left: 1px solid var(--border);
+  color: var(--accent);
+  padding: 0.65rem 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  cursor: pointer;
+  outline: none;
+}
+
+.currency-input-select:hover {
+  background: var(--surface);
+}
+
+/* ── Export Buttons ─────────────────────────────────────── */
+.export-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.btn-export {
+  padding: 0.4rem 0.8rem;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-export:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Manage Categories Button ──────────────────────────── */
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.btn-manage-cats {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--muted);
+  padding: 0.3rem 0.7rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-manage-cats:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Upload Area ───────────────────────────────────────── */
+.upload-area {
+  margin: 1rem 0;
+}
+
+.upload-dropzone {
+  border: 2px dashed var(--border);
+  border-radius: 10px;
+  padding: 1.2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--surface2);
+}
+
+.upload-dropzone:hover {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.upload-icon {
+  font-size: 1.8rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.upload-dropzone p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.upload-dropzone small {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.upload-preview {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.8rem;
+  margin-top: 0.5rem;
+}
+
+.preview-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.preview-info span {
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  color: var(--accent);
+}
+
+.btn-clear-upload {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.preview-suggestion {
+  background: #1e1a14;
+  border-radius: 6px;
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--warning);
+  margin: 0.5rem 0;
+}
+
+.btn-apply-ocr {
+  width: 100%;
+  padding: 0.5rem;
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  color: #1a1410;
+  font-weight: 500;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+/* ── Category Modal ────────────────────────────────────── */
+.modal-category {
+  max-width: 450px;
+}
+
+.category-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.5rem;
+}
+
+.category-tab {
+  background: none;
+  border: none;
+  padding: 0.4rem 1rem;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  border-radius: 20px;
+}
+
+.category-tab.active {
+  background: var(--surface2);
+  color: var(--accent);
+}
+
+.category-list {
+  max-height: 300px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+}
+
+.category-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.category-name {
+  font-size: 0.9rem;
+}
+
+.category-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.category-actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.btn-edit-cat {
+  color: var(--accent);
+}
+
+.btn-delete-cat {
+  color: var(--expense);
+}
+
+.add-category-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.add-category-form input {
+  flex: 1;
+  padding: 0.5rem;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+}
+
+.btn-add-category {
+  padding: 0.5rem 1rem;
+  background: var(--accent);
+  border: none;
+  border-radius: 6px;
+  color: #1a1410;
+  cursor: pointer;
+}
